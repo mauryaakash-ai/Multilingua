@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "multilingua-lipsync"
+version = "0.1.0"
+description = "Reviewable multilingual video dubbing research pipeline"
+requires-python = ">=3.10"
+dependencies = []
+[project.optional-dependencies]
+ui = ["gradio>=6,<7"]
+[project.scripts]
+multilingua = "multilingua.cli:main"
+[tool.setuptools.packages.find]
+include = ["multilingua*"]

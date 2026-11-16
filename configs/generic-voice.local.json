@@ -1,0 +1,41 @@
+{
+  "commands": {
+    "asr": [
+      "/home/akash/A Nitin/multilingua/.venv-speech/bin/python",
+      "{project}/adapters/asr.py",
+      "--model",
+      "/home/akash/A Nitin/multilingua/models/huggingface/hub/models--Systran--faster-whisper-small.en/snapshots/d1d751a5f8271d482d14ca55d9e2deeebbae577f",
+      "--device",
+      "cpu"
+    ],
+    "translate": [
+      "/home/akash/A Nitin/multilingua/.venv-translation/bin/python",
+      "{project}/adapters/translate.py",
+      "--device",
+      "cpu",
+      "--model",
+      "/home/akash/A Nitin/multilingua/models/indictrans2-en-hi"
+    ],
+    "tts": [
+      "/home/akash/A Nitin/multilingua/.venv-voice/bin/python",
+      "{project}/adapters/tts_parler.py"
+    ],
+    "lipsync": [
+      "python",
+      "{project}/adapters/lipsync_musetalk.py"
+    ]
+  },
+  "tts": {
+    "model": "/home/akash/A Nitin/multilingua/models/indic-parler",
+    "device": "cuda",
+    "description": "Rohit speaks in a mature male voice with a slightly low pitch. He delivers a formal speech clearly and confidently at a moderately fast pace, with a little natural room reverberation and no background noise.",
+    "language": "hi"
+  },
+  "timeout_seconds": 1800,
+  "max_speech_speed": 1.25,
+  "lipsync": {
+    "repo": "/home/akash/MuseTalk",
+    "python": "/home/akash/MuseTalk/.venv/bin/python",
+    "batch_size": 2
+  }
+}

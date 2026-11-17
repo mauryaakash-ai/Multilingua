@@ -272,6 +272,7 @@ class Pipeline:
                     slot = row["end"] - row["start"]
                     elapsed = 0.0
                     candidates = []
+                    candidate_texts = []
                     # Retry delivery only: never silently change approved words.
                     retries = (
                         2
@@ -310,6 +311,10 @@ class Pipeline:
                         elapsed += took
                         candidate = work / f"speech_candidate_{retry}.wav"
                         shutil.copyfile(work / "raw.wav", candidate)
+                        candidate_texts.append(row["translation"])
+                        for name in ("tts_request.json", "tts_response.json"):
+                            if (work / name).exists():
+                                shutil.copyfile(work / name, work / f"candidate_{retry}_{name}")
                         try:
                             fitted = media.fit_audio(
                                 work / "raw.wav",
@@ -324,17 +329,36 @@ class Pipeline:
                         else:
                             candidates.append({"retry": retry, "status": "fits", **fitted})
                             prepared[index] = (elapsed, fitted)
-                            if row["translation"] != original_text:
-                                timing_edits.append(
-                                    {
-                                        "start": row["start"],
-                                        "end": row["end"],
-                                        "original": original_text,
-                                        "replacement": row["translation"],
-                                        "human_review": "pending",
-                                    }
-                                )
                             break
+                    selected_retry = len(candidates) - 1
+                    if index not in prepared:
+                        # Delivery prompts are stochastic: the last retry may be slower.
+                        # Rebalance using the shortest complete take and its matching text.
+                        for take in candidates:
+                            take["raw_seconds"] = media.duration(
+                                work / f"speech_candidate_{take['retry']}.wav"
+                            )
+                        selected_retry = min(candidates, key=lambda take: take["raw_seconds"])[
+                            "retry"
+                        ]
+                        shutil.copyfile(
+                            work / f"speech_candidate_{selected_retry}.wav", work / "raw.wav"
+                        )
+                        row["translation"] = candidate_texts[selected_retry]
+                        for name in ("tts_request.json", "tts_response.json"):
+                            saved = work / f"candidate_{selected_retry}_{name}"
+                            if saved.exists():
+                                shutil.copyfile(saved, work / name)
+                    if row["translation"] != original_text:
+                        timing_edits.append(
+                            {
+                                "start": row["start"],
+                                "end": row["end"],
+                                "original": original_text,
+                                "replacement": row["translation"],
+                                "human_review": "pending",
+                            }
+                        )
                     speech_costs[index] = elapsed
                     write_json(
                         work / "speech_preflight.json",
@@ -345,6 +369,7 @@ class Pipeline:
                             "original_text": original_text,
                             "generated_text": row["translation"],
                             "candidates": candidates,
+                            "selected_retry": selected_retry,
                         },
                     )
                     if index not in prepared:
@@ -353,7 +378,7 @@ class Pipeline:
                                 "start": row["start"],
                                 "end": row["end"],
                                 "translation": row["translation"],
-                                "reason": candidates[-1]["error"],
+                                "reason": candidates[selected_retry]["error"],
                             }
                         )
                 if failures and self.config.get("rebalance_speech_timing", False):

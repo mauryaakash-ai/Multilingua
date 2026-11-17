@@ -17,7 +17,9 @@ Project scope: **English → Hindi dubbing only**. English input; Hindi translat
 - [ ] Keep the repository, README, design diagram and evaluation record ready in browser tabs.
 - [ ] Silence notifications; check projector text size and audio volume.
 
-**Current blocker:** the original repository references generated videos and model environments on another inaccessible machine. They are not included in Git. Until you regenerate or recover permitted assets, do not claim the neural demonstration is ready. The fallback walkthrough can demonstrate the UI and test results. Use the upstream evaluation report as attributed historical evidence and state that model playback is unavailable.
+**Current status (17 November):** model-path diagnostics pass on the local GPU workstation. The password-protected temporary studio link has passed public login and anonymous-access checks. These checks do not prove a complete neural render. Rehearse the three clips below and inspect their saved outputs before class; native-speaker approval remains pending. Model weights, credentials and private recordings are intentionally excluded from Git. Use localhost if the temporary link expires.
+
+Submission entry point: [SUBMISSION.md](../SUBMISSION.md). For access and restart instructions, see [deployment](../deploy/README.md); keep credentials out of slides and GitHub.
 
 ## Timed presentation
 
@@ -27,7 +29,7 @@ Project scope: **English → Hindi dubbing only**. English input; Hindi translat
 | 1:30–3:00 | Show architecture; identify model roles and human checkpoint | “Generation handles speech and mouth pixels; a person controls meaning.” |
 | 3:00–4:00 | Explain GenAI choice, scope and baseline | Pretrained specialist models; no RAG or fine-tuning; recorded video only |
 | 4:00–6:00 | Upload a short clip, confirm permission, prepare, show/edit one Hindi phrase | Explain why numbers/names and translation length matter |
-| 6:00–8:00 | Generate audio-only or lip mode if rehearsed runtime fits; show progress | Model loading dominates this offline baseline. Do not wait indefinitely. |
+| 6:00–8:00 | Generate audio-only or lip mode if rehearsed runtime fits; show progress | Report measured loading and inference time separately; both can contribute to the delay. Do not wait indefinitely. |
 | 8:00–10:00 | Play saved original, audio-only and lip-edited versions from the same real run | Identify mode explicitly; show subtitles, artifacts and measured time |
 | 10:00–12:00 | Show one controlled failure and evaluation evidence | Too-long speech stops rather than silently truncating; distinguish tests from quality ratings |
 | 12:00–15:00 | Audience Q&A | Answer with evidence, acknowledge limits, offer a concrete next experiment |
@@ -51,21 +53,21 @@ Use 10–20 seconds, steady framing, bright diffuse light, no background music, 
 
 **Why not subtitles alone?** They are our lowest-cost baseline. Dubbing reduces reading burden; lip editing should earn its additional compute through better viewing experience. We plan paired user ratings.
 
-**Is it real time?** No. The studio processes recorded clips and reloads models per phrase. The optional webcam service finalizes a recording before processing it. Warm workers reduce loading time, while continuous low-latency dubbing still requires measurement.
+**Is it real time?** No. The studio processes recorded clips and keeps supported models resident; some adapters still use separate processes. The optional webcam service finalizes a recording before processing it. Warm workers reduce loading time, while continuous low-latency dubbing still requires measurement.
 
 **Why no RAG or agent framework?** The source speech supplies the content. This is a fixed media transformation workflow, not external knowledge retrieval or autonomous planning.
 
 **What is your contribution?** A reviewable integration: adapters across isolated environments, bounded duration fitting, explicit failures, coherent render artifacts, a review UI and reproducible evaluation. We did not train the underlying models.
 
-**What if Hindi is longer than English?** We measure generated speech. Up to 1.25× acceleration is allowed; longer speech is rejected for a shorter, meaning-preserving translation.
+**What if Hindi is longer than English?** We measure generated speech. Up to 1.25× acceleration is allowed. Bounded delivery retries and phrase-timing adjustments may help; a narrow Hindi contraction is logged as an automatic edit. If speech still does not fit, a shorter, meaning-preserving translation is required. The video is not extended and speech is not truncated.
 
 **How do you measure quality?** ASR reference errors, bilingual adequacy, speech naturalness, temporal lip/identity inspection, timing drift and runtime. Report only measured results, with sample size and reviewer count.
 
 **What can fail?** Accent recognition, names, code-switching, missing faces, flicker and model access. Point to one observed failure and the applicable guardrail.
 
-**What happens to my video?** It is processed through local adapters. Downloading weights requires network access during setup. Local jobs remain on disk until deleted; this is not a public upload service.
+**What happens to my video?** It is processed through local adapters. Downloading weights requires network access during setup. Jobs remain on disk until deleted. The optional password-protected demo link carries uploads through its tunnel provider to this computer; share only permitted media. It is not a multi-user production service.
 
-**What would you improve next?** Context-aware phrase grouping and persistent workers, evaluated on held-out speakers. Live transport comes only after clocked scheduling and sustained latency measurements.
+**What would you improve next?** Validate the existing sentence grouping and persistent workers on held-out speakers, then improve Hindi delivery and mouth quality. Live transport comes only after clocked scheduling and sustained latency measurements.
 
 ## Team handoffs
 

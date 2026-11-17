@@ -20,7 +20,7 @@ Users must never receive silently truncated speech, an unnoticed audio-only subs
 
 ## 2. Why generative AI, and which kind?
 
-The course's named “five criteria” were not supplied. **The following is an explicitly labeled working interpretation, approved for this document; it is not a quotation of the course framework.**
+The course's named “five criteria” were not supplied. **The following is an explicitly labeled working interpretation; it is not a quotation of the course framework.**
 
 | Criterion | Application and decision |
 |---|---|
@@ -40,9 +40,9 @@ The course's named “five criteria” were not supplied. **The following is an 
 
 In scope: one consenting adult with a frontal face, English speech, Hindi output; recorded clips up to 600 seconds; subtitle export; generic voice or explicitly permitted reference voice; review UI and CLI; audio fitting; lip-sync failure detection; measured offline rendering; bounded causal replay experiment.
 
-Out of scope: webcam calls, real-time communication, overlapping/multiple speakers, diarization, arbitrary language choice, automatic speaker verification, face tracking across scene cuts, background music preservation, production hosting, authentication, training, and automatic proof of consent.
+Out of scope: webcam calls, real-time communication, overlapping/multiple speakers, diarization, arbitrary language choice, automatic speaker verification, face tracking across scene cuts, background music preservation, production hosting, multi-tenant access control, training, and automatic proof of consent.
 
-Boundary behavior: no source audio, invalid segments or absent weights stop the job with a diagnostic. If Hindi speech exceeds the allowed duration ratio, the reviewer must shorten it. Lip failure stops rendering; audio-only must be explicitly selected. Silence intervals retain source video and receive silence. The studio asks for another clip when no speech is detected. The experimental service and replay can return normalized original video with no-speech metadata. Fixed-window replay can split phrases; it is an experiment, not a live demo feature.
+Boundary behavior: no source audio, invalid segments or absent weights stop the job with a diagnostic. Before lip generation, speech preflight tries bounded delivery retries, an optional narrow Hindi contraction and bounded phrase-boundary redistribution. If speech still cannot fit, the reviewer must shorten it; speech is not cut off. Lip failure stops rendering; audio-only must be explicitly selected. Silence intervals retain source video and receive silence. The studio asks for another clip when no speech is detected. The experimental service and replay can return normalized original video with no-speech metadata. Fixed-window replay can split phrases; it is an experiment, not a live demo feature.
 
 ## 4. Testable requirements
 
@@ -63,7 +63,7 @@ Boundary behavior: no source audio, invalid segments or absent weights stop the 
 | N1 Latency | UI navigation <2 s after assets load; **target** ≤10 minutes total compute for a 20 s demo clip on target hardware, excluding human review/downloads | Browser usability checked; neural compute target unmeasured here. Report cold load separately. |
 | N2 Timing | Final container duration differs from normalized source by ≤120 ms | Enforced by renderer, tested synthetically; per-stage timestamps included |
 | N3 Freshness | Use the exact current source and reviewed text; regenerate derived speech on every attempt | No inference-result cache; output hashes and immutable render directories |
-| N4 Privacy | Localhost binding; no public share; UI upload ≤200 MB; no credentials committed | UI options, ignore rules, manual configuration review. Local adapters are trusted code. |
+| N4 Privacy | Localhost by default; explicitly enabled temporary demo requires login; UI upload ≤200 MB; no credentials committed | UI options, ignore rules, manual configuration review. Local adapters are trusted code. |
 | N5 Retention | Gradio temporary cache eligible for cleanup after 24 h; project jobs kept until operator deletes them | Documented behavior. Delete private job directories and local browser downloads after assessment. |
 | N6 Licensing | Project code MIT; record exact upstream model/code/dataset terms before sharing each demo asset | Dependency register; license review remains operator-owned |
 | N7 Cost | No paid model API calls in the provided adapters; target ≤10 GPU-minutes per 20 s clip | Real timing pending. Electricity/rental/storage are not free; see cost formula below. |
@@ -84,7 +84,7 @@ flowchart LR
     T --> R[Human translation review\nF3]
     R --> V[Parler-TTS or IndicF5\nHindi WAV]
     V --> D[Duration fitting\n≤1.25x or reject\nF4 N2]
-    D --> L[MuseTalk adapter\noptional mouth editing\nF6]
+    D --> L[MuseTalk or LatentSync\noptional mouth editing\nF6]
     D --> B[Explicit audio-only baseline]
     L --> E[FFmpeg assembly + validation\nF5 F7 N2]
     B --> E
@@ -92,15 +92,21 @@ flowchart LR
     C -.-> J[Local job JSON and per-stage logs\nN3 N5]
 ```
 
+Optional GFPGAN restoration follows lip generation for recorded output and is OFF by default. It may invent teeth/detail and has not met the live frame budget. The same Hindi audio feeds either lip model.
+
 A static [architecture figure](assets/architecture.svg) is also available for projection.
 
-The controller uses argument arrays, never a shell command string. Each model lives in a separate Python environment and receives a JSON request via `--request`; it writes a JSON response via `--response`. Heavy packages stay out of the UI environment. ASR and translation execute once per job. TTS and lip generation run per phrase. Fresh processes release GPU memory but repeat model loading. The experimental service can keep model workers resident and prefetch the next phrase’s TTS to trade memory for reduced loading time.
+The controller uses argument arrays, never a shell command string. Each model lives in a separate Python environment and receives a JSON request via `--request`; it writes a JSON response via `--response`. Heavy packages stay out of the UI environment. ASR and translation execute once per job. TTS and lip generation run per phrase. The studio launcher and optional capture service can retain supported models in resident worker processes in their compatible environments. Unsupported routes still use fresh subprocesses. Residency reduces repeated loading but does not remove neural inference cost. The controller supports next-phrase TTS prefetch when preflight is disabled; default recorded preflight checks all speech before lip generation.
 
 The UI serializes model events across users of this local app; CLI callers must manage shared GPU capacity themselves. A per-job exclusive filesystem lock prevents competing renders. Unix process groups let timeout handling terminate nested MuseTalk processes. This release targets Linux; atomic directory symlinks are part of the publication contract.
 
 State flow: `preparing → awaiting_review → rendering → complete`, with explicit `failed` states. Review validation happens before neural rendering. Each render gets a fresh `renders/<id>/` folder. After all outputs and the ZIP are ready, `current` switches atomically; stable output aliases resolve through it. Failed attempts keep their logs. `published_render` identifies the last successful bundle even if a later attempt fails. The job-state JSON is an operational record; `current` is the authoritative publication pointer after a process interruption.
 
 Source timestamps are quantized once to absolute frame boundaries, avoiding accumulated rounding across cuts. Raw speech duration divided by the slot determines speed. Lips consume the fitted WAV, not the original TTS WAV. The bundle preserves the requested review times and the effective frame-aligned times. Subtitles follow the effective times. The experimental service can widen time slots only into adjacent silence.
+
+### Temporary demo access
+
+An explicitly requested, password-protected temporary HTTPS tunnel can expose the studio while inference stays on the local GPU. It uses a dedicated demo run directory. The tunnel provider terminates HTTPS and can access transmitted media; this is an approved single-operator demonstration, not production hosting. Credentials remain in ignored local files. See [deployment instructions](../deploy/README.md).
 
 ### Experimental capture service
 
@@ -111,7 +117,7 @@ Source timestamps are quantized once to absolute frame boundaries, avoiding accu
 - Generic Parler voice is the default to reduce reference-voice setup; identity matching is not promised.
 - Review precedes synthesis so meaning changes do not require repeated expensive visual renders.
 - No retrieval database, SQL database or agent framework: JSON/files cover this local workflow without unrelated infrastructure.
-- The studio uses isolated per-phrase subprocesses. The optional service can retain workers and overlap next-phrase TTS. Prior tests found substantial compute costs even with warm workers.
+- Keep compatible models resident in isolated workers where supported. Default preflight prioritizes catching all speech-timing failures before expensive lip generation. Warm workers still have substantial compute costs.
 - No fake success or built-in pretend demo. Fixed-text/tone adapters live only in tests.
 
 ## 6. Failure modes, guardrails and residual risk
@@ -138,7 +144,7 @@ See [EVALUATION.md](EVALUATION.md) for slices, per-stage metrics, thresholds, th
 
 | Question / risk | Resolution and owner | Gate |
 |---|---|---|
-| Original model assets and demo media are inaccessible | Model operator installs/downloads approved revisions or recovers permitted assets; record hashes | Before claiming a working neural demo |
+| Model assets and recordings are intentionally absent from Git | Operator verifies the presentation computer with `doctor` and rehearses real clips; another checkout needs separate model setup | Before claiming a reproducible neural demo |
 | Course's exact five criteria unknown | Presenter maps the explicitly labeled interpretation to any later supplied course wording | Before final submission |
 | Gated model access / download time | Operator accepts terms on own account and tests each adapter; never commit tokens | Before live rehearsal |
 | Actual compute / VRAM / clip quality | Run three clips, save metrics and human ratings; shorten demo input if necessary | Before Nov 18 presentation |

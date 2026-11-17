@@ -2,7 +2,7 @@
 
 Project scope: **English → Hindi dubbing only**. English input; Hindi translation, speech and subtitles.
 
-## Current checkout: executed checks
+## Earlier checkout validation (historical snapshot)
 
 | Check | Result | What it establishes |
 |---|---|---|
@@ -36,7 +36,7 @@ The Gradio UI-build test emits an upstream asyncio `ResourceWarning` about an un
 - Precomputed export uses an independent folder and does not mutate published metadata.
 - Causal replay releases a chunk after its source window; invalid config fails before a worker starts.
 
-## What remains unverified here
+## Earlier environment limitations (historical)
 
 No real faster-whisper, IndicTrans2, Indic Parler-TTS, IndicF5 or MuseTalk inference was executed in this revision's environment. Their weights and isolated environments are not installed here; the previous machine and its videos are inaccessible. The prior notes are preserved in the [historical record](HISTORICAL_VALIDATION.md) and [upstream evaluation report](EVALUATION_REPORT.md). The combined checkout’s camera capture, LatentSync inference, and resident model performance still require a real workstation rehearsal.
 
@@ -44,8 +44,18 @@ Consequently, no new claim is made for Hindi accuracy, voice quality, identity p
 
 CI configuration is included for Python 3.11/3.12, media tests, UI build, formatting, packaging and a synthetic browser workflow. Its remote execution status must be read from GitHub Actions; the local results above are independent of whether hosted CI has run.
 
+## Current presentation workstation — 17 November follow-up
+
+The local configuration now passes model-path diagnostics, and the NVIDIA RTX 2000 Ada reports 16380 MiB. This establishes installed paths and GPU visibility, not a new end-to-end neural benchmark. The earlier inaccessible-environment statements above describe the earlier checkout only.
+
+The temporary authenticated studio was verified through its public HTTPS tunnel: login page HTTP 200, anonymous `/config` HTTP 401, successful login, and an authenticated configuration containing 53 components. The demo uses `runs/public-demo`, separate from earlier private studio jobs. This verifies access and authentication, not video generation or public queue completion. The public URL is ephemeral; credentials are not included in Git.
+
+Current full regression run: **68 tests passed**; the Node webcam harness also passed. These checks use test doubles for neural stages and do not certify model quality.
+
+Recent language-route checks: 3 tests passed, confirming Hindi acceptance and rejection of unsupported routes. All 18 then-existing Markdown documents and both language catalogs were checked for English → Hindi-only scope. This submission adds a separate index without changing the language scope.
+
 ## Demo release decision
 
-**Software foundation validated; real-model demonstration gate still open.**
+**Submission documentation and software evidence are available; final neural-demo acceptance remains open.**
 
-To close it: configure the actual demo machine, run three permitted clips through real speech/lip models, record revisions/timings, obtain bilingual text/audio approval and inspect the full lip-edited videos. Save real comparison outputs and rehearse the [demo runbook](DEMO.md). Synthetic test tones and solid-color clips must never be shown as neural dubbing results.
+Close the remaining gate with three permitted clips on the actual presentation machine, saved real output comparisons, full-video review and fluent English–Hindi approval. Earlier real-model measurements in the evaluation/restoration reports are limited evidence; neither diagnostic checks nor synthetic tests establish natural lips, Hindi adequacy or realtime performance.

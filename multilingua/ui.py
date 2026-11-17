@@ -496,7 +496,10 @@ Uploads and outputs remain on disk. This studio is intended for one trusted loca
     return app
 
 
-def launch(config, runs="runs", port=7860):
+def launch(config, runs="runs", port=7860, *, share=False, auth=None):
+    if share and (not auth or not auth[0] or len(auth[1]) < 16):
+        raise ValueError("Public demo sharing requires a username and a strong password")
+
     import atexit
     import signal
 
@@ -523,7 +526,8 @@ def launch(config, runs="runs", port=7860):
     app.queue(default_concurrency_limit=1, max_size=8).launch(
         server_name="127.0.0.1",
         server_port=port,
-        share=False,
+        share=share,
+        auth=auth,
         max_file_size="200mb",
         theme=theme,
         css=CSS,

@@ -2,7 +2,7 @@
 
 Project scope: **English → Hindi dubbing only**. English input; Hindi translation, speech and subtitles.
 This is a single-operator prototype behind authentication, not a multi-tenant production service.
-No provider, spending budget or domain has been selected. Do not expose Gradio directly.
+No permanent provider, spending budget or domain has been selected. Do not expose an unauthenticated Gradio server.
 
 1. Provision a Linux NVIDIA GPU host only after choosing a provider and budget. Transfer code,
    separately licensed weights, MuseTalk, and the isolated Python environments. Recreate environments
@@ -33,3 +33,39 @@ It corrects float rounding at exact frame boundaries; the adapter rejects any fr
 Store this local patch alongside the pinned upstream revision when reproducing a deployment.
 The test server may use leading/following pauses to fit translated speech, so its speech start time
 can shift within an available pause; original and effective timestamps are both saved.
+
+## Temporary local-GPU demo
+
+For an explicitly requested temporary English → Hindi demo, run from the repository:
+
+```bash
+python scripts/serve_demo.py
+```
+
+Use an environment with the UI dependencies installed and a working `configs/local.json`.
+The launcher binds to localhost port 7860, requires login, and requests a Gradio share
+link. Stop any existing studio using that port first. Credentials are generated once in
+`.runtime/demo-login.json` (owner-only permissions); read them locally and share them
+only with intended demo users. Earlier studio recordings are excluded by using
+`runs/public-demo` as the demo output directory. This remains a single-operator demo;
+anyone given its login can access that demo's results.
+
+A public URL is usable only after the tunnel connects and authentication is verified
+through that URL. A local startup message alone does not prove public hosting.
+Keep the computer awake and connected; stop the launcher with Ctrl+C to stop the demo.
+The link is temporary and depends on the tunnel provider and network connectivity.
+Cloudflare Quick Tunnels do not support Gradio's SSE queue; use the authenticated,
+polling-based capture service for that transport instead, with a dedicated run folder.
+Do not run GPU jobs in both interfaces at the same time.
+
+If Gradio sharing times out, an explicitly approved localhost.run tunnel can forward the
+same authenticated studio. Start `python scripts/serve_demo.py --no-share`, then run:
+
+```bash
+ssh -o ServerAliveInterval=30 -R 80:127.0.0.1:7860 nokey@localhost.run
+```
+
+Use the HTTPS URL printed by SSH and keep both processes running. localhost.run terminates
+HTTPS, so it can access transmitted demo credentials and media. Use only a dedicated demo
+password and share permitted media. Verify anonymous `/config` access returns 401, then
+verify login through the public URL. Stop SSH with Ctrl+C to remove public access.

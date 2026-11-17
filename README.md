@@ -8,7 +8,7 @@ Help an educator bring a short English explanation to Hindi-speaking learners. U
 
 ![Multilingua studio](docs/assets/studio.png)
 
-> **Readiness:** the controller, media pipeline and local studio have automated validation. Full neural rehearsal and bilingual audiovisual approval are still required on the presentation workstation. Original demo videos and model weights were not committed and are currently inaccessible. No synthetic test output is presented as real Hindi speech or lip editing. See [validation](docs/VALIDATION.md).
+> **Demo submission:** start with [the submission index](SUBMISSION.md), which maps the lab guidelines to the design, architecture, tech stack and example walkthrough. Local model-path and temporary public-login checks pass; full rehearsal and fluent English–Hindi audiovisual approval are still required. Models and private recordings are deliberately excluded from Git. See [validation](docs/VALIDATION.md).
 
 ## What it does
 
@@ -91,6 +91,6 @@ Tests use real FFmpeg with fixed-text/tone **test doubles**. They verify softwar
 
 ## Responsible use and license
 
-Use only permitted video, likeness and reference voices. The app is a local single-user research tool, bound to localhost with no public share link. Model downloads may contact upstream hosts during setup; provided inference adapters process media locally. Runs remain on disk until you delete them. Shared output must retain AI-editing disclosure; this prototype does not verify consent or watermark pixels.
+Use only permitted video, likeness and reference voices. The app is a local single-user research tool, bound to localhost by default. An explicitly enabled temporary demo uses password protection and a separate output folder; the tunnel provider can access transmitted media. This is not permanent production hosting. Model downloads may contact upstream hosts during setup; provided inference adapters process media locally. Runs remain on disk until you delete them. Shared output must retain AI-editing disclosure; this prototype does not verify consent or watermark pixels.
 
 Project code is [MIT](LICENSE). Upstream code, weights, datasets and voices retain their own terms; see the [dependency register](docs/TECH_STACK.md). Never commit access tokens, private recordings or consent records.

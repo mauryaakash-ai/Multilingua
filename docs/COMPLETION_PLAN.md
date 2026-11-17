@@ -15,7 +15,7 @@ The baseline is **recorded English–Hindi dubbing**, with human translation rev
 5. Record hardware, model commits, license/permission evidence, timings and any failed attempts.
 6. Rehearse the [15-minute runbook](DEMO.md) with a genuine precomputed backup and explicit disclosure.
 
-**Unresolved external dependency:** prior model assets and generated videos are on another inaccessible machine. Software tests alone cannot close the neural-demo gate.
+**Unresolved acceptance gate:** the local model paths now pass diagnostics, but three fully rehearsed clips and fluent English–Hindi audiovisual approval are still required. Model assets are intentionally absent from Git; a fresh machine needs its own setup. Software tests alone cannot close the neural-demo gate.
 
 ## After the demonstration
 

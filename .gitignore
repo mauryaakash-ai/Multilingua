@@ -35,3 +35,6 @@ outputs/
 
 # Downloaded dataset archives remain local.
 datasets.zip
+
+# Local share-tunnel certificate/cache.
+.gradio/

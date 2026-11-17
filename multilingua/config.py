@@ -4,6 +4,7 @@ import json
 import math
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -62,8 +63,10 @@ def command(config, stage):
     return args
 
 
-def diagnose(path, audio_only=False):
+def diagnose(path, audio_only=False, *, stages=None):
     """No downloads or model inference; successful path checks do not certify models."""
+    if stages is None:
+        stages = STAGES[:3] if audio_only else STAGES
     checks = []
 
     def add(name, ok, detail, required=True):
@@ -84,7 +87,7 @@ def diagnose(path, audio_only=False):
         add("configuration", False, str(exc))
     else:
         add("configuration", True, str(Path(path).resolve()))
-        for stage in STAGES[:3] if audio_only else STAGES:
+        for stage in stages:
             try:
                 args = command(config, stage)
                 found = shutil.which(args[0])
@@ -95,28 +98,64 @@ def diagnose(path, audio_only=False):
             except ValueError as exc:
                 add(stage, False, str(exc))
         tts = config.get("tts", {})
-        if "reference_audio" in tts:
+        if "tts" in stages and "reference_audio" in tts:
             add(
                 "reference voice",
                 Path(tts["reference_audio"]).is_file()
                 and bool(tts.get("reference_text", "").strip()),
                 "Use a permitted reference WAV and its exact transcript.",
             )
-        if not audio_only:
+        if "lipsync" in stages:
             lip = config.get("lipsync", {})
             if "repo" in lip:
                 for asset in (
                     "scripts/inference.py",
                     "models/musetalkV15/unet.pth",
                     "models/musetalkV15/musetalk.json",
+                    "models/sd-vae/config.json",
+                    "models/whisper/config.json",
+                    "models/dwpose/dw-ll_ucoco_384.pth",
+                    "models/face-parse-bisent/79999_iter.pth",
+                    "models/face-parse-bisent/resnet18-5c106cde.pth",
                 ):
                     asset_path = Path(lip["repo"]) / asset
                     add("MuseTalk asset", asset_path.is_file(), str(asset_path))
-                add(
-                    "MuseTalk Python",
-                    shutil.which(lip.get("python", "")),
-                    lip.get("python", "Set lipsync.python"),
-                )
+                interpreter = shutil.which(lip.get("python", ""))
+                add("MuseTalk Python", interpreter, lip.get("python", "Set lipsync.python"))
+                if interpreter:
+                    probe = (
+                        "from importlib.util import find_spec; import sys; "
+                        "print(', '.join(n for n in sys.argv[1:] if find_spec(n) is None))"
+                    )
+                    try:
+                        result = subprocess.run(
+                            [
+                                interpreter,
+                                "-c",
+                                probe,
+                                "torch",
+                                "cv2",
+                                "diffusers",
+                                "mmcv",
+                                "mmpose",
+                            ],
+                            capture_output=True,
+                            text=True,
+                            check=True,
+                            timeout=5,
+                        )
+                        missing = result.stdout.strip()
+                        add(
+                            "MuseTalk packages",
+                            not missing,
+                            f"Missing: {missing}" if missing else "Required module paths found.",
+                        )
+                    except (OSError, subprocess.SubprocessError):
+                        add(
+                            "MuseTalk packages",
+                            False,
+                            "Could not check the configured interpreter.",
+                        )
     return {
         "ready": all(c["ok"] for c in checks if c["required"]),
         "checks": checks,

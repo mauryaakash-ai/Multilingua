@@ -60,8 +60,13 @@ def reviewed_segments(rows, original, duration):
     return validate_segments(result, duration, translated=True)
 
 
-def readiness_markdown(report):
+def readiness_markdown(report, audio_ready=False):
     required = [c for c in report["checks"] if c["required"] and not c["ok"]]
+    if required and audio_ready:
+        return (
+            "**Audio-only dubbing is available.** "
+            "Lip synchronization needs additional setup. See **System check**."
+        )
     if required:
         return (
             f"**Setup needed · {len(required)} checks to resolve.** "
@@ -75,6 +80,15 @@ def build_app(config="configs/local.json", runs="runs"):
 
     runs = Path(runs).resolve()
     report = diagnose(config)
+    audio_ready = diagnose(config, audio_only=True)["ready"]
+
+    def require_setup(stages, action):
+        checks = diagnose(config, stages=stages)["checks"]
+        missing = list(dict.fromkeys(c["name"] for c in checks if c["required"] and not c["ok"]))
+        if missing:
+            raise ValueError(
+                f"{action} needs setup ({', '.join(missing)}). Open the System check tab."
+            )
 
     def prepare(video, consent, progress=gr.Progress()):
         # Clear earlier job/output before any operation that might fail.
@@ -96,6 +110,7 @@ def build_app(config="configs/local.json", runs="runs"):
                 raise ValueError(
                     "Confirm permission to process and dub the video before continuing."
                 )
+            require_setup(("asr", "translate"), "Transcribing and translating")
             pipe = Pipeline(config, progress=lambda value, message: progress(value, desc=message))
             pipe.config["target_language"] = "hi"
             job = pipe.prepare(video, runs)
@@ -147,10 +162,11 @@ def build_app(config="configs/local.json", runs="runs"):
             segments = reviewed_segments(
                 rows, read_json(folder / "segments.json"), state["duration"]
             )
+            audio_only = mode == "Audio-only comparison"
+            require_setup(("tts",) if audio_only else ("tts", "lipsync"), "Rendering")
             review = folder / "ui_review.json"
             write_json(review, segments)
             pipe = Pipeline(config, progress=lambda value, message: progress(value, desc=message))
-            audio_only = mode == "Audio-only comparison"
             output = pipe.render(folder, review, audio_only)
             result = read_json(folder / "job.json")
             # Resolve immutable artifact paths so a later rerender cannot change an existing download.
@@ -184,7 +200,9 @@ def build_app(config="configs/local.json", runs="runs"):
                   <div class="flow-item"><span class="step">1</span><div><b>Bring your video</b><small>Clear audio. One visible speaker.</small></div></div>
                   <div class="flow-item"><span class="step">2</span><div><b>Make the meaning right</b><small>Review and refine the Hindi.</small></div></div>
                   <div class="flow-item"><span class="step">3</span><div><b>Give it a new voice</b><small>Generate, compare and export.</small></div></div></div>""")
-                setup_note = gr.Markdown(readiness_markdown(report), elem_id="setup-note")
+                setup_note = gr.Markdown(
+                    readiness_markdown(report, audio_ready), elem_id="setup-note"
+                )
                 job = gr.State("")
                 with gr.Row(equal_height=True):
                     with gr.Column():
@@ -241,7 +259,9 @@ def build_app(config="configs/local.json", runs="runs"):
                 with gr.Row():
                     mode = gr.Radio(
                         ["Lip-synced Hindi", "Audio-only comparison"],
-                        value="Lip-synced Hindi",
+                        value="Audio-only comparison"
+                        if audio_ready and not report["ready"]
+                        else "Lip-synced Hindi",
                         label="Output mode",
                         info="Audio-only is useful for checking pronunciation and timing first.",
                     )
@@ -372,7 +392,7 @@ Uploads and outputs remain on disk. This studio is intended for one trusted loca
                     ]
                     for c in latest["checks"]
                 ],
-                readiness_markdown(latest),
+                readiness_markdown(latest, diagnose(config, audio_only=True)["ready"]),
             )
 
         refresh.click(refresh_checks, [], [checks, setup_note])

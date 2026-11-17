@@ -45,3 +45,20 @@ class ConfigTests(unittest.TestCase):
         self.assertTrue(
             any("Copy configs/local.example.json" in c["detail"] for c in report["checks"])
         )
+
+    def test_prepare_preflight_ignores_missing_render_models(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / "config.json"
+            config.write_text(
+                json.dumps(
+                    {
+                        "commands": {
+                            "asr": ["{python}"],
+                            "translate": ["{python}"],
+                        }
+                    }
+                )
+            )
+            with patch("multilingua.config.shutil.which", side_effect=lambda name: name):
+                self.assertTrue(diagnose(config, stages=("asr", "translate"))["ready"])
+                self.assertFalse(diagnose(config, audio_only=True)["ready"])

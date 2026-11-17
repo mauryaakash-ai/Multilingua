@@ -1,5 +1,7 @@
 # Setup and operation
 
+Project scope: **English → Hindi dubbing only**. English input; Hindi translation, speech and subtitles.
+
 ## Supported workstation
 
 Linux, Python 3.10+ for the controller (tested here on 3.11), FFmpeg/FFprobe with H.264/AAC, and a browser. Model environments have their own upstream Python/CUDA constraints: use Python 3.10 for the historical model package snapshots. A CUDA GPU is normally needed for practical speech/lip generation; CPU-only media tests do not need one. A 16 GB card is a starting point, not a universal memory guarantee.

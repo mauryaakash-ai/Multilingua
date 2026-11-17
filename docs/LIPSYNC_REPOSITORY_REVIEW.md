@@ -1,5 +1,7 @@
 # Lip-sync repository review — 16 November 2026
 
+Project scope: **English → Hindi dubbing only**. English input; Hindi translation, speech and subtitles.
+
 The reported defect remains unresolved. Preserving beard texture is not evidence that lip generation or synchronization improved.
 
 | Repository | Relevant approach | Local decision |

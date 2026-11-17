@@ -1,5 +1,7 @@
 # Multilingua — design and architecture
 
+Project scope: **English → Hindi dubbing only**. English input; Hindi translation, speech and subtitles.
+
 **Release:** English → Hindi recorded-video dubbing, local single-operator prototype.
 **Demo:** 18 November 2026. **Decision status:** implemented baseline; model-quality acceptance remains pending on the presentation workstation.
 
@@ -102,7 +104,7 @@ Source timestamps are quantized once to absolute frame boundaries, avoiding accu
 
 ### Experimental capture service
 
-`web/index.html` records or uploads one complete clip to a localhost FastAPI service protected by HTTP Basic authentication. The service validates permission and media limits, admits one active and one waiting GPU job, and records completion, failure or cancellation. Its worker uses the same controller with automatic translation, optional resident adapters and optional LatentSync. The additional Tamil and Telugu voices are experimental. Camera capture followed by processing does not provide continuous live transport.
+`web/index.html` records or uploads one complete clip to a localhost FastAPI service protected by HTTP Basic authentication. The service validates permission and media limits, admits one active and one waiting GPU job, and records completion, failure or cancellation. Its worker uses the same controller with automatic translation, optional resident adapters and optional LatentSync. The service accepts only English input and generates Hindi output. Camera capture followed by processing does not provide continuous live transport.
 
 ### Deliberate decisions
 

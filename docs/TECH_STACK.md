@@ -1,5 +1,7 @@
 # Technology and dependency register
 
+Project scope: **English → Hindi dubbing only**. English input; Hindi translation, speech and subtitles.
+
 | Layer | Technology | Responsibility |
 |---|---|---|
 | Controller | Python 3.10+, standard library | State machine, validation, JSON adapter requests, locks, timing and artifacts |

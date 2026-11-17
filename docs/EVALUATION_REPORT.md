@@ -1,5 +1,7 @@
 # Evaluation and delivery status — 16 November 2026
 
+Project scope: **English → Hindi dubbing only**. English input; Hindi translation, speech and subtitles.
+
 This is a working recorded-video prototype with preliminary measured evaluation. It is not a
 validated real-time or production service. Three public HDTF development speakers were tested;
 all were used during debugging, so none is a held-out final test speaker.
@@ -33,7 +35,7 @@ contextual baseline, not a language-matched threshold. The third speaker's final
 the earlier measurement in `syncnet-additional/report.json` is explicitly superseded.
 
 ## Voice consistency proxy
-Independent multilingual Whisper-small transcription was compared with the intended Hindi text.
+Independent Hindi transcription using Whisper-small was compared with the intended Hindi text.
 Normalization is NFKC, casefold and punctuation removal; CER excludes whitespace and counts codepoints.
 
 | Generic voice / clip | WER | CER |

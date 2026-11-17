@@ -1,6 +1,8 @@
 # Multilingua
 
-**Reviewable English → Hindi video dubbing, with optional lip synchronization.**
+**English → Hindi video dubbing only, with optional lip synchronization.**
+
+English is the sole supported input language; Hindi is the sole supported translation, speech and subtitle output. This scope applies to the studio, CLI, capture service, evaluation and roadmap.
 
 Help an educator bring a short English explanation to Hindi-speaking learners. Upload a recorded video, review every translated phrase, generate speech that fits the original timing, and export a disclosed AI-dubbed video with subtitles and a review record.
 

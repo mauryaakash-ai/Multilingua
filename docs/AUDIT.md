@@ -1,5 +1,7 @@
 # Repository audit and rubric mapping
 
+Project scope: **English → Hindi dubbing only**. English input; Hindi translation, speech and subtitles.
+
 Reviewed the full original tracked source tree: controller/UI/media/timeline/replay, all five model adapters and their protocol, both helper scripts, presets and historical package snapshots, tests, README, completion plan, validation history, license and packaging metadata. During the work, upstream added a resident pipeline, an experimental capture service, evaluation and benchmark scripts, and LatentSync/SyncNet submodules. Those changes were integrated and tested with the studio branch.
 
 ## Findings and implemented improvements

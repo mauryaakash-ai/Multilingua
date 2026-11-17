@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "multilingua-lipsync"
 version = "0.2.0"
-description = "Reviewable multilingual video dubbing research pipeline"
+description = "Reviewable English-to-Hindi video dubbing research pipeline"
 requires-python = ">=3.10"
 dependencies = []
 [project.optional-dependencies]

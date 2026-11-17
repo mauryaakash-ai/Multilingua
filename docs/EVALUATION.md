@@ -1,5 +1,7 @@
 # Evaluation plan and honest reporting
 
+Project scope: **English → Hindi dubbing only**. English input; Hindi translation, speech and subtitles.
+
 ## Separate three kinds of evidence
 
 1. **Software correctness:** automated tests with fixed text and synthetic tones. They verify contracts, media timing, failure handling and UI flows.
@@ -12,7 +14,7 @@ Current results and unexecuted checks are in [VALIDATION.md](VALIDATION.md). His
 
 For tomorrow's demo, record **three permitted 10–20 second clips**: clean explanatory speech, names/numbers, and a technical sentence. Use one frontal speaker with deliberate pauses. These are a rehearsal set, not a generalization benchmark.
 
-For subsequent evaluation, collect at least 30 short clips from 10 consenting adults, with separate development/test speakers. Include clean English, varied Indian English accents, names/numbers, technical vocabulary, code-switching, moderate noise, mild head motion and occlusion. Label unsupported multi-speaker/scene-cut inputs as boundary tests, not expected successes. Never tune speed caps or acceptance thresholds on the held-out test set.
+For subsequent evaluation, collect at least 30 short clips from 10 consenting adults, with separate development/test speakers. Include clean English, varied Indian English accents, names/numbers, technical vocabulary, moderate noise, mild head motion and occlusion. Label non-English speech, code-switching and unsupported multi-speaker/scene-cut inputs as boundary tests, not expected successes. Never tune speed caps or acceptance thresholds on the held-out test set.
 
 The template [evaluation-manifest.example.json](../examples/evaluation-manifest.example.json) records clip identity, split, slice, permission reference, source hash and references. Keep actual faces, consent records and references outside Git unless publication is explicitly permitted. Record exclusions with reasons before scoring, including failures; do not evaluate only successful clips.
 

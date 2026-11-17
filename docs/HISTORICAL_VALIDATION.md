@@ -1,5 +1,7 @@
 > Historical record inherited from the original repository. The referenced model environments, media and logs were not committed and are inaccessible on the current workstation. These observations have not been independently reproduced. See [current validation](VALIDATION.md). Machine-specific presets mentioned below were replaced with portable examples.
 
+Project scope: **English → Hindi dubbing only**. English input; Hindi translation, speech and subtitles.
+
 # Validation record — 14 November 2026
 
 ## Executed here

@@ -1,5 +1,7 @@
 # Remaining acceptance gates — 17 November 2026
 
+Project scope: **English → Hindi dubbing only**. English input; Hindi translation, speech and subtitles.
+
 Local models only. No cloud speech provider is used. English to Hindi dubbing only.
 
 ## Continuous dubbing
@@ -8,7 +10,7 @@ The current transport still uploads complete clips. `multilingua/streaming.py` i
 
 ## Lip quality
 
-No new restoration has been enabled. The previous faster LatentSync variants worsened measured alignment. Visual sharpness plus SyncNet on the same clips remains the acceptance gate, not an unsharp-filter implementation alone.
+Optional recorded-video GFPGAN restoration is available, OFF by default; its single-clip results are documented in [the restoration report](WEBCAM_RESTORATION.md). General lip-quality improvement remains unproven. The previous faster LatentSync variants worsened measured alignment. Visual sharpness plus SyncNet on the same clips remains the acceptance gate, not an unsharp-filter implementation alone.
 
 ## Native review
 

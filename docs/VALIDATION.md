@@ -1,5 +1,7 @@
 # Validation — 17 November 2026
 
+Project scope: **English → Hindi dubbing only**. English input; Hindi translation, speech and subtitles.
+
 ## Current checkout: executed checks
 
 | Check | Result | What it establishes |

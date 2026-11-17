@@ -1,4 +1,6 @@
 # Deployment candidate — not yet publicly deployed
+
+Project scope: **English → Hindi dubbing only**. English input; Hindi translation, speech and subtitles.
 This is a single-operator prototype behind authentication, not a multi-tenant production service.
 No provider, spending budget or domain has been selected. Do not expose Gradio directly.
 

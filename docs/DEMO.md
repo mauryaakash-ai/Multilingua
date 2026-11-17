@@ -1,5 +1,7 @@
 # November 18 demo — 15-minute runbook
 
+Project scope: **English → Hindi dubbing only**. English input; Hindi translation, speech and subtitles.
+
 **Repository:** https://github.com/mauryaakash-ai/Multilingua
 **Title:** Multilingua: Reviewable English–Hindi Video Dubbing
 

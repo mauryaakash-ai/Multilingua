@@ -1,5 +1,7 @@
 # Roadmap and completion gates
 
+Project scope: **English → Hindi dubbing only**. English input; Hindi translation, speech and subtitles.
+
 ## Current release
 
 The baseline is **recorded English–Hindi dubbing**, with human translation review, isolated model adapters, duration fitting, optional MuseTalk lip editing, exported captions and versioned delivery artifacts. The [design](DESIGN.md) describes current behavior and tradeoffs. [Validation](VALIDATION.md) distinguishes current measurements from inherited historical notes.

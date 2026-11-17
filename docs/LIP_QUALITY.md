@@ -1,5 +1,7 @@
 # Lip quality update
 
+Project scope: **English → Hindi dubbing only**. English input; Hindi translation, speech and subtitles.
+
 The download output.mp4 was matched by SHA256 to server job 1364107fbec84529bdf167a587965469. Re-render: runs/lip-quality/improved.mp4. The original was preserved. Same Hindi audio, 134 frames, 5.36 seconds.
 
 Generic voice configurations now opt into quality_mode: mouth. A local runner replaces only a dilated semantic lip region, with mild sharpening of the generated face before blending. This preserves more source beard and jaw texture than the broad jaw mask. Missing mouth segmentation fails explicitly. The upstream checkout is unchanged. The runner also preserves the CRF18 intermediate before upstream audio muxing re-encodes it; the adapter muxes it with stream-copy video.

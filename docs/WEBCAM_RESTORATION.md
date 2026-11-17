@@ -1,5 +1,7 @@
 # Webcam mouth-restoration experiment
 
+Project scope: **English → Hindi dubbing only**. English input; Hindi translation, speech and subtitles.
+
 The inspected webcam job is `8cf47a73c510435db924f4d5df79488e` (10.72 s, 1920×1080). A source/output frame at 4 s shows softer generated lips and changed moustache detail. This frame inspection does not establish temporal alignment quality.
 
 Existing production path already has a mouth segmentation mask and mild unsharp enhancement. MuseTalk v1.5's upstream inference fixes `bbox_shift=0`; tuning the old v1.0 setting would not change this path.
@@ -36,6 +38,6 @@ Whole 10.72-second webcam clip (identical PCM audio, 264 windows): baseline mini
 
 The inspected paired frame shows clearer tooth/lip edges, but this is modest and not a calibrated perceptual result. Mouth Laplacian variance **decreased** on the short sample (11.19 to 8.14 for the efficient variant); therefore no blanket numerical sharpness-improvement claim is supported. Colour matching and temporal smoothing did not pass the comparison and remain disabled. The added cost fails the 40 ms/frame live budget before counting MuseTalk itself.
 
-The studio adapter invokes only restoration-only efficient mode at strength 0.65, evicts the resident MuseTalk worker before restoring to avoid overlapping GPU model allocations, validates duration, and records enhancement settings/model hash in provenance. Audio-only and silent jobs skip enhancement. No general quality claim across speakers/languages is supported by this one-clip test.
+The studio adapter invokes only restoration-only efficient mode at strength 0.65, evicts the resident MuseTalk worker before restoring to avoid overlapping GPU model allocations, validates duration, and records enhancement settings/model hash in provenance. Audio-only and silent jobs skip enhancement. No general Hindi lip-quality claim across speakers is supported by this one-clip test.
 
 Preview: `runs/quality-webcam-review/comparison.mp4`; full restored video: `webcam-restored.mp4`; paired metric reports: `paired-sync/report.json` and `full-sync/report.json`. Model SHA256: e2cd4703ab14f4d01fd1383a8a8b266f9a5833dacee8e6a79d3bf21a1b6be5ad.

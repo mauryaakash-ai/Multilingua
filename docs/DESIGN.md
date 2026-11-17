@@ -38,9 +38,11 @@ The course's named “five criteria” were not supplied. **The following is an 
 
 In scope: one consenting adult with a frontal face, English speech, Hindi output; recorded clips up to 600 seconds; subtitle export; generic voice or explicitly permitted reference voice; review UI and CLI; audio fitting; lip-sync failure detection; measured offline rendering; bounded causal replay experiment.
 
+Quick Webcam also accepts recordings and uploads up to 15 seconds. It translates and dubs the whole clip, then renders lip sync by default. Review the translation before sharing or use Studio to correct individual phrases before synthesis.
+
 Out of scope: webcam calls, real-time communication, overlapping/multiple speakers, diarization, arbitrary language choice, automatic speaker verification, face tracking across scene cuts, background music preservation, production hosting, authentication, training, and automatic proof of consent.
 
-Boundary behavior: no source audio, invalid segments or absent weights stop the job with a diagnostic. If Hindi speech exceeds the allowed duration ratio, the studio can slow the affected video section. Fixed timing requires a shorter translation. Lip failure stops rendering; audio-only must be explicitly selected. Silence intervals retain source video and receive silence. The studio asks for another clip when no speech is detected. The experimental service and replay can return normalized original video with no-speech metadata. Fixed-window replay can split phrases; it is an experiment, not a live demo feature.
+Boundary behavior: no source audio, invalid segments or absent weights stop the job with a diagnostic. If Hindi speech exceeds the allowed duration ratio, the studio can slow the affected video section. Fixed timing requires a shorter translation. In Studio, lip failure stops rendering and a separate selection starts an audio-only render. In Quick Webcam, lip failure leaves the labelled audio preview available. Silence intervals retain source video and receive silence. The studio asks for another clip when no speech is detected. The experimental service and replay can return normalized original video with no-speech metadata. Fixed-window replay can split phrases; it is an experiment, not a live demo feature.
 
 ## 4. Testable requirements
 
@@ -55,6 +57,7 @@ Boundary behavior: no source audio, invalid segments or absent weights stop the 
 | F7 | Export MP4, UTF-8 SRT, reviewed text, timing, hashes, AI disclosure and ZIP | Integration + browser download tests |
 | F8 | Serialize UI model operations, lock jobs, terminate timed-out process groups, preserve the previous published render on model failure | Lock, timeout and rerender regressions |
 | F9 | Missing configuration opens a useful studio and actionable system check; CLI doctor exits nonzero | UI build + diagnostics tests |
+| F10 | Webcam Stop submits a permitted short clip. Show text and audio preview before lip sync. Keep the labelled audio preview available if lip sync fails. | Browser and FFmpeg integration tests |
 
 | ID | Non-functional target | Measurement / status |
 |---|---|---|
@@ -99,6 +102,20 @@ The UI serializes model events across users of this local app; CLI callers must 
 State flow: `preparing → awaiting_review → rendering → complete`, with explicit `failed` states. Review validation happens before neural rendering. Each render gets a fresh `renders/<id>/` folder. After all outputs and the ZIP are ready, `current` switches atomically; stable output aliases resolve through it. Failed attempts keep their logs. `published_render` identifies the last successful bundle even if a later attempt fails. The job-state JSON is an operational record; `current` is the authoritative publication pointer after a process interruption.
 
 Source timestamps are quantized once to absolute frame boundaries, avoiding accumulated rounding across cuts. Raw speech duration divided by the slot determines speed. With flexible timing, overlong phrases extend to the next frame boundary that fits the speech within the speed cap. Lip synthesis uses the fitted WAV and retimed video. The bundle preserves the review times, and alignment records the corresponding output times. Subtitles follow the output timeline. The experimental service can widen time slots into adjacent silence.
+
+### Quick Webcam
+
+```mermaid
+flowchart LR
+    W[Webcam Stop or clip upload] --> A[Resident ASR and translation]
+    A --> T[English and Hindi text]
+    A --> V[One Hindi voice track]
+    V --> P[Audio preview and SRT]
+    P --> L[Optional MuseTalk render]
+    L --> F[Lip-synced MP4 with the same Hindi track]
+```
+
+Opening the tab starts loading speech and translation models. The lip worker retains model weights between clips and detects faces in each new recording. Job metadata records preview and render times separately. MuseTalk's published real-time workflow prepares a reusable avatar before inference. [MuseTalk documentation](https://github.com/TMElyralab/MuseTalk#real-time-inference)
 
 ### Experimental capture service
 

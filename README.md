@@ -54,7 +54,7 @@ Outputs live under `runs/JOB_ID/renders/RENDER_ID/`; top-level output aliases po
 
 ## Quick Webcam
 
-Open **Quick Webcam** in the local studio, confirm permission, record up to 15 seconds of English, then press **Stop**. Hindi text appears first, followed by a playable Hindi dub and subtitles. Quick Webcam uses the original video frames and one Hindi voice track for the clip. Use **Studio** for reviewed, phrase-aligned lip-sync output.
+Open **Quick Webcam** in the local studio, confirm permission, record up to 15 seconds of English, then press **Stop**. Hindi text, subtitles, and an audio preview arrive first. With **Synchronize lips to the Hindi dub** enabled, a MuseTalk render replaces the preview when it finishes. Keep one face visible throughout the clip. If lip sync stops, the audio preview remains available. Use **Studio** to review and edit the translation phrase by phrase before rendering.
 
 ## Experimental capture and evaluation
 

@@ -113,7 +113,7 @@ def build_app(config="configs/local.json", runs="runs"):
         warmed = True
         return "Local models are ready."
 
-    def process_quick(video, consent):
+    def process_quick(video, consent, lip_sync):
         yield "", "", None, None, "Listening to your clip…"
         try:
             if not consent:
@@ -121,7 +121,7 @@ def build_app(config="configs/local.json", runs="runs"):
             if not video:
                 raise ValueError("Record or upload a short English clip first.")
             require_setup(("asr", "translate", "tts"), "Quick Webcam")
-            preview = quick_dub(video, config, runs / "quick", get_quick_pool())
+            preview = quick_dub(video, config, runs / "quick", get_quick_pool(), lip_sync=lip_sync)
             try:
                 draft = next(preview)
                 yield (
@@ -132,15 +132,34 @@ def build_app(config="configs/local.json", runs="runs"):
                     f"Hindi text ready in {draft['text_seconds']:.1f} s. Generating the voice…",
                 )
                 dub = next(preview)
+                status = f"Audio preview ready in {dub['seconds']:.1f} s."
+                status += (
+                    " Synchronizing lips…" if lip_sync else " Review the Hindi before sharing."
+                )
+                yield gr.skip(), gr.skip(), dub["video"], dub["subtitles"], status
+                if lip_sync:
+                    try:
+                        require_setup(("lipsync",), "Lip sync")
+                        synced = next(preview)
+                    except (ValueError, OSError, RuntimeError, KeyError) as exc:
+                        reason = str(exc).strip().split("\n")[-1]
+                        yield (
+                            gr.skip(),
+                            gr.skip(),
+                            gr.skip(),
+                            gr.skip(),
+                            f"Lip sync stopped. {reason} Your audio preview is still available.",
+                        )
+                    else:
+                        yield (
+                            gr.skip(),
+                            gr.skip(),
+                            synced["video"],
+                            gr.skip(),
+                            f"Lip-synced Hindi ready in {synced['seconds']:.1f} s. Review before sharing.",
+                        )
             finally:
                 preview.close()
-            yield (
-                gr.skip(),
-                gr.skip(),
-                dub["video"],
-                dub["subtitles"],
-                f"Preview ready in {dub['seconds']:.1f} s after upload. Review the Hindi before sharing.",
-            )
         except (ValueError, OSError, RuntimeError, KeyError) as exc:
             yield gr.skip(), gr.skip(), None, None, f"Preview stopped. {exc}"
 
@@ -218,6 +237,8 @@ def build_app(config="configs/local.json", runs="runs"):
             )
             audio_only = mode == "Audio-only comparison"
             require_setup(("tts",) if audio_only else ("tts", "lipsync"), "Rendering")
+            if not audio_only and quick_pool is not None:
+                quick_pool.evict("lipsync")
             review = folder / "ui_review.json"
             write_json(review, segments)
             pipe = Pipeline(config, progress=lambda value, message: progress(value, desc=message))
@@ -346,8 +367,8 @@ def build_app(config="configs/local.json", runs="runs"):
                 gr.Markdown(
                     f"## Record and translate\n"
                     f"Record up to {MAX_CLIP_SECONDS} seconds of English. "
-                    "Press Stop to translate and hear a Hindi dub. "
-                    "The quick preview keeps the original mouth movements."
+                    "Press Stop for a Hindi audio preview, then a lip-synced video. "
+                    "For lip sync, keep one face clearly visible throughout the recording."
                 )
                 quick_ready = gr.Markdown(
                     "Warming up local models…"
@@ -355,6 +376,7 @@ def build_app(config="configs/local.json", runs="runs"):
                     else "Check model setup to get started."
                 )
                 quick_consent = gr.Checkbox(label="I have permission to record or dub this clip.")
+                quick_lip_sync = gr.Checkbox(label="Synchronize lips to the Hindi dub", value=True)
                 with gr.Row():
                     webcam = gr.Video(
                         label="English recording",
@@ -371,7 +393,7 @@ def build_app(config="configs/local.json", runs="runs"):
                         height=270,
                     )
                     quick_output = gr.Video(
-                        label="Hindi audio dub · AI-generated",
+                        label="Hindi output · AI-generated",
                         interactive=False,
                         height=270,
                     )
@@ -437,15 +459,14 @@ Uploads and outputs remain on disk. This studio is intended for one trusted loca
             '<div id="footer">Multilingua · English–Hindi recorded-video research prototype · Review before sharing</div>'
         )
         shared = {"concurrency_id": "model-work", "concurrency_limit": 1}
-        quick_queue = {"concurrency_id": "quick-work", "concurrency_limit": 1}
-        quick_tab.select(warm_quick, outputs=quick_ready, **quick_queue)
+        quick_tab.select(warm_quick, outputs=quick_ready, **shared)
         gr.on(
             triggers=[webcam.stop_recording, quick_button.click],
             fn=process_quick,
-            inputs=[webcam, quick_consent],
+            inputs=[webcam, quick_consent, quick_lip_sync],
             outputs=[quick_english, quick_hindi, quick_output, quick_captions, quick_status],
             api_name="quick_dub",
-            **quick_queue,
+            **shared,
         )
         prep.click(
             prepare,

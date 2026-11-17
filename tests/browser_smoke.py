@@ -19,7 +19,7 @@ from urllib.request import urlopen
 from playwright.sync_api import expect, sync_playwright
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from test_integration import FAKE
+from test_integration import FAKE, FAKE_QUICK_LIP
 
 from multilingua import media
 
@@ -48,7 +48,7 @@ def main():
             video,
         )
         adapter = root / "test_adapter.py"
-        adapter.write_text(FAKE.replace("duration=0.8", "duration=1.4"))
+        adapter.write_text(FAKE_QUICK_LIP.replace("duration=0.8", "duration=1.4"))
         config = root / "config.json"
         config.write_text(
             json.dumps(
@@ -172,11 +172,20 @@ def main():
                     page.wait_for_timeout(1300)  # Let the simulated webcam record a real container.
                     record.click()
                     quick_status = page.get_by_role("textbox", name="Preview status")
-                    expect(quick_status).to_have_value(re.compile(r"^Preview ready"), timeout=20000)
+                    expect(quick_status).to_have_value(
+                        re.compile(r"^Lip-synced Hindi ready"), timeout=20000
+                    )
                     expect(page.get_by_role("textbox", name="Hindi translation")).to_have_value(
                         "नमस्ते"
                     )
                     expect(page.locator('a[href$="/hindi.srt"]')).to_be_visible()
+                    adapter.write_text(FAKE)
+                    page.get_by_role("button", name="Translate clip").click()
+                    expect(quick_status).to_have_value(
+                        re.compile(r"^Lip sync stopped.*audio preview is still available"),
+                        timeout=20000,
+                    )
+                    expect(page.locator('video[src*="quick-hindi.mp4"]')).to_be_visible()
                     mobile = browser.new_page(viewport={"width": 390, "height": 844})
                     mobile.goto(url, wait_until="domcontentloaded")
                     mobile.get_by_role("heading", name="Your ideas. A new language.").wait_for()
@@ -185,7 +194,7 @@ def main():
                     assert not errors, errors
                     browser.close()
                     print(
-                        "PASS: studio review, audio render, ZIP download, lip failure, webcam Stop → Hindi preview, mobile layout."
+                        "PASS: studio review, audio render, ZIP download, webcam Stop → lip sync, audio fallback, mobile layout."
                     )
             finally:
                 server.terminate()

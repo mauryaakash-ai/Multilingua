@@ -24,6 +24,15 @@ else: raise RuntimeError('Deliberate failing lip adapter')
 Path(a.response).write_text(json.dumps(out))
 """
 
+FAKE_QUICK_LIP = FAKE.replace(
+    "else: raise RuntimeError('Deliberate failing lip adapter')",
+    "elif '/quick/' in a.request:\n"
+    "    import shutil\n"
+    "    shutil.copyfile(r['video'], r['output'])\n"
+    "    out={'video':r['output']}\n"
+    "else: raise RuntimeError('Deliberate failing lip adapter')",
+)
+
 
 class MediaIntegration(unittest.TestCase):
     def setUp(self):
@@ -86,6 +95,32 @@ class MediaIntegration(unittest.TestCase):
             preview = next(result)
         self.assertAlmostEqual(media.duration(preview["video"]), 2.6, delta=0.06)
         self.assertIn("00:00:02,600", Path(preview["subtitles"]).read_text())
+
+    def test_quick_lip_sync_preserves_audio_and_waits_until_after_preview(self):
+        from multilingua.quick import quick_dub
+
+        (self.root / "fake.py").write_text(FAKE_QUICK_LIP.replace("duration=0.8", "duration=2.61"))
+        quick_jobs = self.root / "quick"
+        with closing(
+            quick_dub(self.video, self.pipe.config_path, quick_jobs, lip_sync=True)
+        ) as run:
+            draft = next(run)
+            preview = next(run)
+            job = next(quick_jobs.iterdir())
+            self.assertEqual(draft["hindi"], "नमस्ते")
+            self.assertFalse((job / "lipsync_request.json").exists())
+            self.assertFalse(read_json(job / "quick.json")["lip_sync"])
+            result = next(run)
+        self.assertNotEqual(preview["video"], result["video"])
+        self.assertEqual(preview["subtitles"], result["subtitles"])
+        self.assertEqual(media.video_duration(result["video"]), 2.64)
+        self.assertEqual(media.duration(job / "lip-drive.wav"), 2.64)
+        cmd = ["ffmpeg", "-v", "error", "-i"]
+        args = ["-map", "0:a:0", "-c:a", "copy", "-f", "hash", "-"]
+        self.assertEqual(
+            media.run(cmd + [preview["video"]] + args), media.run(cmd + [result["video"]] + args)
+        )
+        self.assertTrue(read_json(job / "quick.json")["lip_sync"])
 
     def test_lip_failure_never_succeeds_as_passthrough(self):
         job = self.pipe.prepare(self.video, self.root / "runs")

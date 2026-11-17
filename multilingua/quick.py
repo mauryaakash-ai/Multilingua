@@ -1,5 +1,6 @@
-"""Short local webcam previews, with an early translation and one voice synthesis call."""
+"""Translate short clips locally and optionally synchronize the speaker’s lips."""
 
+import math
 import tempfile
 import time
 import uuid
@@ -12,6 +13,7 @@ from .pipeline import Pipeline, write_json
 from .timeline import subtitles
 
 MAX_CLIP_SECONDS = 15
+VIDEO_FPS = 25
 
 
 def warm_models(config, pool):
@@ -42,8 +44,8 @@ def warm_models(config, pool):
                 task.result()
 
 
-def quick_dub(clip, config, runs, pool=None):
-    """Yield the draft text first, then a playable MP4 with a complete Hindi voice track."""
+def quick_dub(clip, config, runs, pool=None, *, lip_sync=False):
+    """Yield the draft text, the audio preview, then the lip-synced video if requested."""
     started = time.monotonic()
     pipe = Pipeline(config, resident_pool=pool)
     job = Path(runs).resolve() / uuid.uuid4().hex
@@ -104,7 +106,7 @@ def quick_dub(clip, config, runs, pool=None):
     if not raw_audio.is_file():
         raise RuntimeError("Speech model did not create an audio track.")
     speech_seconds = media.duration(raw_audio)
-    output_seconds = max(speech_seconds, source_seconds)
+    output_seconds = math.ceil(max(speech_seconds, source_seconds) * VIDEO_FPS) / VIDEO_FPS
     video_path = job / "quick-hindi.mp4"
     # Replace the English soundtrack. Hold the last frame if Hindi speech needs more time.
     media.ffmpeg(
@@ -117,7 +119,7 @@ def quick_dub(clip, config, runs, pool=None):
         "-map",
         "1:a:0",
         "-vf",
-        "scale=w='trunc(min(960,iw)/2)*2':h=-2,fps=25,tpad=stop_mode=clone:stop=-1",
+        f"scale=w='trunc(min(960,iw)/2)*2':h=-2,fps={VIDEO_FPS},tpad=stop_mode=clone:stop=-1",
         "-af",
         "apad",
         "-t",
@@ -143,19 +145,73 @@ def quick_dub(clip, config, runs, pool=None):
         subtitles([{"start": 0.0, "end": speech_seconds, "translation": hindi}]), encoding="utf-8"
     )
     elapsed = time.monotonic() - started
-    write_json(
-        job / "quick.json",
+    result = {
+        "mode": "quick_webcam",
+        "ai_dubbed": True,
+        "lip_sync": False,
+        "source_seconds": source_seconds,
+        "output_seconds": media.duration(video_path),
+        "translation_ready_seconds": text_seconds,
+        "audio_preview_seconds": elapsed,
+        "processing_seconds": elapsed,
+        "asr_seconds": asr_seconds,
+        "translation_seconds": translation_seconds,
+        "tts_seconds": tts_seconds,
+    }
+    write_json(job / "quick.json", result)
+    yield {"video": str(video_path), "subtitles": str(srt), "seconds": elapsed}
+    if not lip_sync:
+        return
+
+    visual_seconds = media.video_duration(video_path)
+    driving_audio = job / "lip-drive.wav"
+    # MuseTalk generates one frame per audio interval. Align PCM to the frame grid.
+    media.ffmpeg(
+        "-i",
+        raw_audio,
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        "-af",
+        "apad",
+        "-t",
+        f"{visual_seconds:.6f}",
+        "-c:a",
+        "pcm_s16le",
+        driving_audio,
+    )
+    synced = job / "lips.mp4"
+    _, lip_seconds = pipe.adapter(
+        "lipsync",
+        job,
         {
-            "mode": "quick_webcam",
-            "ai_dubbed": True,
-            "lip_sync": False,
-            "source_seconds": source_seconds,
-            "output_seconds": media.duration(video_path),
-            "translation_ready_seconds": text_seconds,
-            "processing_seconds": elapsed,
-            "asr_seconds": asr_seconds,
-            "translation_seconds": translation_seconds,
-            "tts_seconds": tts_seconds,
+            **pipe.config.get("lipsync", {}),
+            "video": str(video_path),
+            "audio": str(driving_audio),
+            "output": str(synced),
         },
     )
-    yield {"video": str(video_path), "subtitles": str(srt), "seconds": elapsed}
+    if not synced.is_file() or abs(media.video_duration(synced) - visual_seconds) > 0.05:
+        raise RuntimeError("Lip model did not return video matching the webcam clip duration.")
+    final = job / "quick-lipsynced-hindi.mp4"
+    # Keep the complete Hindi soundtrack from the preview, without another lossy encode.
+    media.ffmpeg(
+        "-i",
+        synced,
+        "-i",
+        video_path,
+        "-map",
+        "0:v:0",
+        "-map",
+        "1:a:0",
+        "-c",
+        "copy",
+        "-movflags",
+        "+faststart",
+        final,
+    )
+    total = time.monotonic() - started
+    result.update(lip_sync=True, lipsync_seconds=lip_seconds, processing_seconds=total)
+    write_json(job / "quick.json", result)
+    yield {"video": str(final), "subtitles": str(srt), "seconds": total}

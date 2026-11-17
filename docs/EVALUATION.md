@@ -6,7 +6,7 @@
 2. **Model execution:** actual ASR/translation/TTS/MuseTalk runs with recorded hardware and revisions. A successful subprocess proves execution, not quality.
 3. **Human usefulness:** bilingual review, listening and continuous video inspection. No automated infrastructure test replaces this.
 
-Current results and unexecuted checks are in [VALIDATION.md](VALIDATION.md). Historical unbundled results remain explicitly attributed in [HISTORICAL_VALIDATION.md](HISTORICAL_VALIDATION.md).
+Current results and unexecuted checks are in [VALIDATION.md](VALIDATION.md). Historical unbundled results remain explicitly attributed in [HISTORICAL_VALIDATION.md](HISTORICAL_VALIDATION.md) and [the upstream evaluation report](EVALUATION_REPORT.md). Its FLORES chrF++ sample and paired SyncNet comparison are preliminary evidence from the original workstation. The associated artifacts were unavailable for independent reproduction.
 
 ## Test-set slices
 

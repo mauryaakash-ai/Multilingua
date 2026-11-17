@@ -100,14 +100,28 @@ The archive is marked AI-dubbed and includes text/timing evidence. Its disclosur
 | No speech or silent replay chunk | Use clear speech; silent-window pass-through is not implemented in causal replay |
 | Incomplete metadata after host crash | Inspect `current` and its immutable bundle; `job.json` can lag the atomic publication pointer |
 
+## Experimental local capture service
+
+After passing the studio model preflight, install the optional service and run the localhost launcher from the source checkout.
+
+```bash
+pip install -e '.[server]'
+python scripts/serve_local.py
+```
+
+Open http://127.0.0.1:7861 in a browser that supports HTTP Basic authentication. The launcher stores the login in the ignored `.runtime/local-login.json` and uses `configs/local.json` unless `MULTILINGUA_CONFIG` is set. Set `MULTILINGUA_RESIDENT=0` to use fresh adapter processes for each call. Choose **MuseTalk** for the standard setup. The optional LatentSync backend additionally requires the pinned `vendor/LatentSync` submodule, its own model environment and weights, and a local VAE directory set through `MULTILINGUA_VAE` if it differs from `~/MuseTalk/models/sd-vae`.
+
+The service accepts complete 30-second or shorter MP4/WebM clips up to 64 MiB, followed by offline processing. Permission and recording start are explicit. The service permits one GPU job and one waiting job, can cancel jobs, and labels no-speech clips as original video. On automatic jobs it can use adjacent pauses to fit speech. It saves both requested and effective timings. The service skips the studio's translation review, so review its output before sharing. Tamil and Telugu require native-speaker validation. See [deployment notes](../deploy/README.md) for the separate release requirements.
+
 ## Developer checks
 
 ```bash
-pip install -e '.[ui,dev]'
+pip install -e '.[ui,server,dev]'
 ruff check .
 ruff format --check .
 python -m unittest discover -s tests -v
 python tests/browser_smoke.py
+node tests/webcam_backpressure.cjs
 python -m build
 ```
 

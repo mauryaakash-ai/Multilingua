@@ -15,7 +15,7 @@
 - [ ] Keep the repository, README, design diagram and evaluation record ready in browser tabs.
 - [ ] Silence notifications; check projector text size and audio volume.
 
-**Current blocker:** the original repository references generated videos and model environments on another inaccessible machine. They are not included in Git. Until you regenerate or recover permitted assets, do not claim the neural demonstration is ready. The UI and synthetic tests are useful demonstrations of software behavior, not substitutes for Hindi speech and real lip editing.
+**Current blocker:** the original repository references generated videos and model environments on another inaccessible machine. They are not included in Git. Until you regenerate or recover permitted assets, do not claim the neural demonstration is ready. The fallback walkthrough can demonstrate the UI and test results. Use the upstream evaluation report as attributed historical evidence and state that model playback is unavailable.
 
 ## Timed presentation
 
@@ -49,7 +49,7 @@ Use 10–20 seconds, steady framing, bright diffuse light, no background music, 
 
 **Why not subtitles alone?** They are our lowest-cost baseline. Dubbing reduces reading burden; lip editing should earn its additional compute through better viewing experience. We plan paired user ratings.
 
-**Is it real time?** No. This release processes recorded clips and reloads models per phrase. File replay is an experimental queue benchmark, not webcam streaming.
+**Is it real time?** No. The studio processes recorded clips and reloads models per phrase. The optional webcam service finalizes a recording before processing it. Warm workers reduce loading time, while continuous low-latency dubbing still requires measurement.
 
 **Why no RAG or agent framework?** The source speech supplies the content. This is a fixed media transformation workflow, not external knowledge retrieval or autonomous planning.
 

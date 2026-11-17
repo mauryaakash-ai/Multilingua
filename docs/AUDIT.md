@@ -1,6 +1,6 @@
 # Repository audit and rubric mapping
 
-Reviewed the full original tracked source tree: controller/UI/media/timeline/replay, all five model adapters and their protocol, both helper scripts, presets and historical package snapshots, tests, README, completion plan, validation history, license and packaging metadata.
+Reviewed the full original tracked source tree: controller/UI/media/timeline/replay, all five model adapters and their protocol, both helper scripts, presets and historical package snapshots, tests, README, completion plan, validation history, license and packaging metadata. During the work, upstream added a resident pipeline, an experimental capture service, evaluation and benchmark scripts, and LatentSync/SyncNet submodules. Those changes were integrated and tested with the studio branch.
 
 ## Findings and implemented improvements
 
@@ -52,4 +52,4 @@ Reviewed the full original tracked source tree: controller/UI/media/timeline/rep
 
 The original purpose and model roles are retained. No new language pair, cloud service, RAG system, model training or pretend live webcam capability was added. Existing model assets are unavailable, so real neural execution and human evaluation cannot be certified from this checkout. The default voice remains generic, and the UI is a trusted local prototype, not a production upload service.
 
-Practical residual limits include per-phrase model reload cost, silent fixed-window replay failures, manual ASR corrections, no persistent job browser, no automatic speaker/consent verification, no burned-in watermark and local storage growth. These are documented, scoped limitations rather than hidden success claims.
+Practical residual limits include per-phrase model reload cost, silent fixed-window replay failures, manual ASR corrections, no persistent studio job browser, no automatic speaker/consent verification, no burned-in watermark and local storage growth. These are documented, scoped limitations rather than hidden success claims.

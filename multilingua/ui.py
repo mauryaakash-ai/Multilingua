@@ -96,8 +96,11 @@ def build_app(config="configs/local.json", runs="runs"):
                 raise ValueError(
                     "Confirm permission to process and dub the video before continuing."
                 )
-            pipe = Pipeline(config, lambda value, message: progress(value, desc=message))
+            pipe = Pipeline(config, progress=lambda value, message: progress(value, desc=message))
+            pipe.config["target_language"] = "hi"
             job = pipe.prepare(video, runs)
+            if read_json(job / "job.json").get("no_speech"):
+                raise ValueError("No speech detected; use a clip with clear English speech.")
             segments = read_json(job / "segments.json")
             state = read_json(job / "job.json")
             yield (
@@ -146,7 +149,7 @@ def build_app(config="configs/local.json", runs="runs"):
             )
             review = folder / "ui_review.json"
             write_json(review, segments)
-            pipe = Pipeline(config, lambda value, message: progress(value, desc=message))
+            pipe = Pipeline(config, progress=lambda value, message: progress(value, desc=message))
             audio_only = mode == "Audio-only comparison"
             output = pipe.render(folder, review, audio_only)
             result = read_json(folder / "job.json")

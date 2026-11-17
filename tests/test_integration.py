@@ -200,6 +200,32 @@ class MediaIntegration(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.pipe.prepare(silent, self.root / "runs")
 
+    def test_subframe_tail_does_not_create_empty_video(self):
+        job = self.pipe.prepare(self.video, self.root / "runs")
+        review = job / "review.json"
+        review.write_text(
+            json.dumps([{"start": 0, "end": 1.98, "text": "Hello", "translation": "नमस्ते"}])
+        )
+        output = self.pipe.render(job, review, audio_only=True)
+        self.assertTrue(output.is_file())
+        self.assertEqual(read_json(job / "reviewed_segments.json")[0]["end"], 2.0)
+        self.assertEqual(len(list((job / "current").glob("part_*.mp4"))), 1)
+
+    def test_optional_following_pause_extends_slot(self):
+        self.pipe.config["use_following_pause"] = True
+        job = self.pipe.prepare(self.video, self.root / "runs")
+        self.pipe.render(job, audio_only=True)
+        self.assertEqual(read_json(job / "requested_segments.json")[0]["end"], 1.4)
+        self.assertEqual(read_json(job / "reviewed_segments.json")[0]["end"], 2.0)
+        self.assertEqual(read_json(job / "job.json")["timing_policy"], "consume_following_pause")
+
+    def test_optional_leading_pause_keeps_original_review(self):
+        self.pipe.config.update(use_following_pause=True, use_leading_pause=True)
+        job = self.pipe.prepare(self.video, self.root / "runs")
+        self.pipe.render(job, audio_only=True)
+        self.assertEqual(read_json(job / "requested_segments.json")[0]["start"], 0.4)
+        self.assertEqual(read_json(job / "reviewed_segments.json")[0]["start"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -4,12 +4,15 @@
 |---|---|---|
 | Controller | Python 3.10+, standard library | State machine, validation, JSON adapter requests, locks, timing and artifacts |
 | UI | Gradio 6.32, HTML/CSS | Local upload/review/playback, permission controls, progress and downloads |
+| Experimental capture | FastAPI, Uvicorn, HTML/CSS/JavaScript, MediaRecorder | Authenticated local upload/capture and bounded job queue |
+| Optional resident workers | Python subprocesses and Unix sockets | Retain model instances and overlap next-phrase TTS in the experimental service |
 | Media | FFmpeg + FFprobe, H.264/AAC/PCM/SRT | Decode, normalize, audio fit, cut, mux, concatenate, inspect |
 | ASR | faster-whisper / CTranslate2 / Whisper small.en | English transcript and phrase timestamps, CPU INT8 by default |
 | Translation | AI4Bharat IndicTrans2 + IndicTransToolkit + Transformers/PyTorch | English–Hindi neural translation |
 | Default speech | Indic Parler-TTS + Transformers/PyTorch + SoundFile | Prompt-described generic Hindi voice |
 | Alternate speech | IndicF5 + safetensors + Transformers/PyTorch | Hindi speech conditioned on a permitted reference voice |
 | Lip sync | MuseTalk 1.5 + upstream vision/audio dependencies | Audio-conditioned mouth-region editing |
+| Alternate lip model | LatentSync 1.6 | Experimental GPU quality comparison |
 | Persistence | Local filesystem, JSON, ZIP | Job state, versioned renders, logs and downloadable deliverables |
 | Quality checks | unittest, Ruff, Playwright, GitHub Actions | Contract/media regressions, browser workflows, lint, builds |
 
@@ -28,6 +31,7 @@ Project-authored code uses the repository's MIT license. That does not relicense
 | Indic Parler-TTS | [Model card](https://huggingface.co/ai4bharat/indic-parler-tts) | Model access conditions, weights/code revision and tokenizer dependency |
 | IndicF5 | [Model card](https://huggingface.co/ai4bharat/IndicF5) | Weights/code revision and permission for the reference voice |
 | MuseTalk | [Repository](https://github.com/TMElyralab/MuseTalk) | Repo commit, v1.5 and auxiliary model terms, environment snapshot |
+| LatentSync / SyncNet | [LatentSync](https://github.com/bytedance/LatentSync), [SyncNet](https://github.com/joonson/syncnet_python) | Pinned submodule revisions, model terms and checkpoint hashes |
 | Input face/video and voice | Operator's own consent/source record | Capture purpose, permitted editing, class display and redistribution scope |
 
 Model weights and generated face/voice media are not bundled in Git. Historical environment snapshots preserve the original workstation package lists. Current UI/controller dependencies are separately locked and validated. Pin remote model revisions where supported, or use explicit local snapshot directories; do not claim a moving model identifier is reproducible.

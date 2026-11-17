@@ -4,8 +4,9 @@
 
 | Check | Result | What it establishes |
 |---|---|---|
-| `python -m unittest discover -s tests -v` | **35 passed**, 16.635 s | Config, contracts, timelines, media, publication, replay and UI-review behavior |
+| `python -m unittest discover -s tests -v` | **55 passed** | Config, contracts, timelines, media, publication, replay, UI review, evaluation and experimental API behavior |
 | `python tests/browser_smoke.py` | **Passed** on local Chrome | Upload, permission gate, editable Hindi, review reset, audio-only render, ZIP download, explicit lip failure, mobile layout; no JavaScript errors |
+| `node tests/webcam_backpressure.cjs` | Passed | Model selection header, queue retry, requested capture duration and camera shutdown in the JS harness |
 | `ruff check .` and `ruff format --check .` | Passed | Consistent syntax/import/style checks |
 | `python -m compileall -q multilingua adapters scripts` | Passed | Python syntax; does not import heavy model libraries |
 | `python -m build` | Wheel and source distribution built | Controller packaging; model assets/environments remain external |
@@ -35,7 +36,7 @@ The Gradio UI-build test emits an upstream asyncio `ResourceWarning` about an un
 
 ## What remains unverified here
 
-No real faster-whisper, IndicTrans2, Indic Parler-TTS, IndicF5 or MuseTalk inference was executed in this revision's environment. Their weights and isolated environments are not installed here; the previous machine and its videos are inaccessible. The prior notes are preserved as an explicitly attributed [historical record](HISTORICAL_VALIDATION.md), not current proof.
+No real faster-whisper, IndicTrans2, Indic Parler-TTS, IndicF5 or MuseTalk inference was executed in this revision's environment. Their weights and isolated environments are not installed here; the previous machine and its videos are inaccessible. The prior notes are preserved in the [historical record](HISTORICAL_VALIDATION.md) and [upstream evaluation report](EVALUATION_REPORT.md). The combined checkout’s camera capture, LatentSync inference, and resident model performance still require a real workstation rehearsal.
 
 Consequently, no new claim is made for Hindi accuracy, voice quality, identity preservation, temporal lip quality, neural render speed, VRAM peak, or live playback. Changes to adapter revision handling and finite-audio checks are syntax-reviewed but still require model-environment execution. Full keyboard/screen-reader and bilingual accessibility review also remains pending.
 

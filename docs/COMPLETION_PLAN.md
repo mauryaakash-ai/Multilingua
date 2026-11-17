@@ -20,7 +20,7 @@ The baseline is **recorded English–Hindi dubbing**, with human translation rev
 | Milestone | Work | Acceptance evidence |
 |---|---|---|
 | Context-aware phrases | Group by semantic pauses, preserve names/pronouns, allow source transcript correction in UI | Paired adequacy ratings and fewer duration-rejection cases without meaning loss |
-| Persistent model workers | Warm models once, track VRAM, bounded stage queues | Cold vs warm timing, stable memory on ten-minute input, no regressions |
+| Resident worker evaluation | Benchmark the existing optional resident path, track VRAM, validate bounded stage queues | Cold vs warm timing, stable memory on ten-minute input, no regressions |
 | Visual continuity | Face tracking, overlap context and controlled seams across phrases | Full temporal reviews on motion/occlusion slices; reduced artifacts |
 | Improved file replay | VAD-aware silence pass-through, pause-based chunks, failure summaries | Causal arrival checks, no unbounded backlog, reported overload instead of fake real time |
 | Live transport | WebRTC capture, clocked audio/video buffers, disconnect handling, backpressure | Receiver-clock source-to-playback latency; 10-minute sustained run on defined hardware/network |
@@ -34,4 +34,4 @@ Proposed live goals (not measurements): 25 FPS, median source-to-playback delay 
 python -m multilingua.cli --config configs/local.json replay input.mp4 --chunk-seconds 6 --max-waiting 2
 ```
 
-Fixed windows are released after their source-time boundary; one worker calls the real adapters. `chunks.json` records arrival/start/ready times and output paths. Queue overflow stops the run. `replay.json` reports readiness delays; no continuous receiver/player is implemented. Automatic translation skips the UI review checkpoint, so use only permitted evaluation clips and review every resulting output before sharing. Silence-only chunks fail ASR. The separate `streaming.simulate` function evaluates scheduling costs only.
+Fixed windows are released after their source-time boundary; one worker calls the real adapters. `chunks.json` records arrival/start/ready times and output paths. Queue overflow stops the run. `replay.json` reports readiness delays; no continuous receiver/player is implemented. Automatic translation skips the UI review checkpoint, so use only permitted evaluation clips and review every resulting output before sharing. Silence-only chunks preserve normalized source and are recorded as no-speech jobs. The separate `streaming.simulate` function evaluates scheduling costs only.

@@ -1,0 +1,11 @@
+{$MULTILINGUA_DOMAIN} {
+    request_body {
+        max_size 64MB
+    }
+    reverse_proxy 127.0.0.1:7861
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy no-referrer
+        Permissions-Policy "camera=(self), microphone=(self)"
+    }
+}

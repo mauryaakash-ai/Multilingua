@@ -10,8 +10,8 @@ p.add_argument("--request", required=True)
 p.add_argument("--response", required=True)
 a = p.parse_args()
 r = json.loads(Path(a.request).read_text(encoding="utf-8"))
-if r.get("language", "hi") != "hi":
-    raise ValueError("This configuration supports Hindi only")
+if r.get("language", "hi") not in ("hi", "ta", "te"):
+    raise ValueError("Unsupported configured TTS language")
 import numpy as np
 import soundfile as sf
 import torch
@@ -21,8 +21,15 @@ from transformers import AutoTokenizer
 started = time.monotonic()
 device = r.get("device", "cuda")
 model_path = r["model"]
+precision = r.get("dtype", "float32")
+if precision not in ("float32", "float16"):
+    raise ValueError("TTS dtype must be float32 or float16")
+if precision == "float16" and not str(device).startswith("cuda"):
+    raise ValueError("Half-precision TTS requires CUDA")
 model = (
-    ParlerTTSForConditionalGeneration.from_pretrained(model_path, revision=r.get("revision"))
+    ParlerTTSForConditionalGeneration.from_pretrained(
+        model_path, revision=r.get("revision"), torch_dtype=getattr(torch, precision)
+    )
     .to(device)
     .eval()
 )
@@ -68,6 +75,7 @@ Path(a.response).write_text(
         {
             "load_seconds": loaded - started,
             "voice_description": description,
+            "dtype": precision,
             "items": rows,
             **(rows[0] if len(rows) == 1 else {}),
         },

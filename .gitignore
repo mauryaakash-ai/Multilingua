@@ -26,3 +26,9 @@ artifacts/
 private/
 playwright-report/
 test-results/
+
+.runtime/
+.venv-latentsync/
+vendor/
+presentation/.build/
+outputs/

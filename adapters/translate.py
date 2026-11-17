@@ -15,6 +15,9 @@ os.environ.setdefault(
     "HF_MODULES_CACHE", str(Path(__file__).resolve().parents[1] / "models" / "modules")
 )
 import torch
+
+if a.device == "cpu":
+    torch.set_num_threads(int(os.environ.get("MULTILINGUA_CPU_THREADS", "4")))
 from IndicTransToolkit import IndicProcessor
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 

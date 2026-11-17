@@ -40,7 +40,7 @@ In scope: one consenting adult with a frontal face, English speech, Hindi output
 
 Out of scope: webcam calls, real-time communication, overlapping/multiple speakers, diarization, arbitrary language choice, automatic speaker verification, face tracking across scene cuts, background music preservation, production hosting, authentication, training, and automatic proof of consent.
 
-Boundary behavior: no source audio, no speech, invalid segments or absent weights stop the job with a diagnostic. If Hindi speech exceeds the allowed duration ratio, the reviewer must shorten it. Lip failure stops rendering; audio-only must be explicitly selected. Silence intervals retain source video and receive silence. Fixed-window replay can split phrases and rejects silent chunks; it is an experiment, not a live demo feature.
+Boundary behavior: no source audio, invalid segments or absent weights stop the job with a diagnostic. If Hindi speech exceeds the allowed duration ratio, the reviewer must shorten it. Lip failure stops rendering; audio-only must be explicitly selected. Silence intervals retain source video and receive silence. The studio asks for another clip when no speech is detected. The experimental service and replay can return normalized original video with no-speech metadata. Fixed-window replay can split phrases; it is an experiment, not a live demo feature.
 
 ## 4. Testable requirements
 
@@ -92,20 +92,24 @@ flowchart LR
 
 A static [architecture figure](assets/architecture.svg) is also available for projection.
 
-The controller uses argument arrays, never a shell command string. Each model lives in a separate Python environment and receives a JSON request via `--request`; it writes a JSON response via `--response`. Heavy packages stay out of the UI environment. ASR/translation execute once per job; TTS/lip sync execute once per phrase. Process isolation releases GPU memory but repeats model loading. This tradeoff favors a predictable offline baseline over low latency.
+The controller uses argument arrays, never a shell command string. Each model lives in a separate Python environment and receives a JSON request via `--request`; it writes a JSON response via `--response`. Heavy packages stay out of the UI environment. ASR and translation execute once per job. TTS and lip generation run per phrase. Fresh processes release GPU memory but repeat model loading. The experimental service can keep model workers resident and prefetch the next phrase’s TTS to trade memory for reduced loading time.
 
 The UI serializes model events across users of this local app; CLI callers must manage shared GPU capacity themselves. A per-job exclusive filesystem lock prevents competing renders. Unix process groups let timeout handling terminate nested MuseTalk processes. This release targets Linux; atomic directory symlinks are part of the publication contract.
 
 State flow: `preparing → awaiting_review → rendering → complete`, with explicit `failed` states. Review validation happens before neural rendering. Each render gets a fresh `renders/<id>/` folder. After all outputs and the ZIP are ready, `current` switches atomically; stable output aliases resolve through it. Failed attempts keep their logs. `published_render` identifies the last successful bundle even if a later attempt fails. The job-state JSON is an operational record; `current` is the authoritative publication pointer after a process interruption.
 
-Source timestamps are quantized once to absolute frame boundaries, avoiding accumulated rounding across cuts. Raw speech duration divided by the slot determines speed. Lips consume the fitted WAV, not the original TTS WAV. Hindi subtitles preserve reviewed phrase times (within half a frame of fitted boundaries).
+Source timestamps are quantized once to absolute frame boundaries, avoiding accumulated rounding across cuts. Raw speech duration divided by the slot determines speed. Lips consume the fitted WAV, not the original TTS WAV. The bundle preserves the requested review times and the effective frame-aligned times. Subtitles follow the effective times. The experimental service can widen time slots only into adjacent silence.
+
+### Experimental capture service
+
+`web/index.html` records or uploads one complete clip to a localhost FastAPI service protected by HTTP Basic authentication. The service validates permission and media limits, admits one active and one waiting GPU job, and records completion, failure or cancellation. Its worker uses the same controller with automatic translation, optional resident adapters and optional LatentSync. The additional Tamil and Telugu voices are experimental. Camera capture followed by processing does not provide continuous live transport.
 
 ### Deliberate decisions
 
 - Generic Parler voice is the default to reduce reference-voice setup; identity matching is not promised.
 - Review precedes synthesis so meaning changes do not require repeated expensive visual renders.
 - No retrieval database, SQL database or agent framework: JSON/files cover this local workflow without unrelated infrastructure.
-- Per-phrase models and no persistent GPU worker: easy isolation, slower cold loads. Record this limitation in the demo.
+- The studio uses isolated per-phrase subprocesses. The optional service can retain workers and overlap next-phrase TTS. Prior tests found substantial compute costs even with warm workers.
 - No fake success or built-in pretend demo. Fixed-text/tone adapters live only in tests.
 
 ## 6. Failure modes, guardrails and residual risk

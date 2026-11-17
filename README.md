@@ -18,7 +18,7 @@ Help an educator bring a short English explanation to Hindi-speaking learners. U
 - Exports MP4, Hindi SRT, reviewed text, timing measurements, provenance and a ZIP delivery.
 - Retains the previous successful output and matching metadata if a later render fails.
 
-**Scope:** one visible consenting adult, clear English audio, frontal face, recorded clips up to 10 minutes. Start with 10–20 seconds. Background music is not retained. Webcam calls, multiple speakers and arbitrary target languages are outside this release. Causal file replay is a separate experimental benchmark, not real-time playback.
+**Scope:** one visible consenting adult, clear English audio, frontal face, recorded clips up to 10 minutes. Start with 10–20 seconds. Background music is not retained. The studio focuses on recorded Hindi dubbing. The repository also includes an experimental local capture service and causal file replay. Both process complete clips or chunks. Multiple speakers and continuous WebRTC calls remain outside scope.
 
 ## Open the studio
 
@@ -52,6 +52,10 @@ python -m multilingua.cli --config configs/local.json render runs/JOB_ID
 
 Outputs live under `runs/JOB_ID/renders/RENDER_ID/`; top-level output aliases point through the atomic `current` link. Download `delivery.zip` for video, captions, review text, alignment, provenance and disclosure together. Watch and listen to the entire result before sharing, and label the clip **AI-dubbed**.
 
+## Experimental capture and evaluation
+
+A separate authenticated FastAPI service can record or upload short clips for background dubbing. It supports optional resident workers, MuseTalk or LatentSync, and experimental Tamil and Telugu presets. Use the Hindi review studio for the classroom walkthrough. See [service setup](docs/SETUP.md#experimental-local-capture-service) and [prior experimental results](docs/EVALUATION_REPORT.md).
+
 ## Project submission
 
 | Rubric item | Document / evidence |
@@ -69,7 +73,7 @@ Outputs live under `runs/JOB_ID/renders/RENDER_ID/`; top-level output aliases po
 ## Checks
 
 ```bash
-pip install -e '.[ui,dev]'
+pip install -e '.[ui,server,dev]'
 ruff check .
 ruff format --check .
 python -m unittest discover -s tests -v

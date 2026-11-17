@@ -39,12 +39,18 @@ with tempfile.TemporaryDirectory(prefix="mlsync_", dir="/tmp") as tmp:
             }
         )
     )
+    runner = (
+        [str(Path(__file__).with_name("musetalk_quality_runner.py").resolve())]
+        if r.get("quality_mode") == "mouth"
+        else ["-m", "scripts.inference"]
+    )
     command = [
         r["python"],
-        "-m",
-        "scripts.inference",
+        *runner,
         "--inference_config",
         str(cfg),
+        "--parsing_mode",
+        "mouth" if r.get("quality_mode") == "mouth" else "jaw",
         "--result_dir",
         str(work / "results"),
         "--unet_model_path",
@@ -55,7 +61,7 @@ with tempfile.TemporaryDirectory(prefix="mlsync_", dir="/tmp") as tmp:
         "v15",
         "--batch_size",
         str(r.get("batch_size", 2)),
-        "--use_float16",
+        *(["--use_float16"] if r.get("use_float16", True) else []),
         "--saved_coord",
         "--ffmpeg_path",
         str(Path(shutil.which("ffmpeg") or "/usr/bin/ffmpeg").parent),
@@ -73,6 +79,33 @@ with tempfile.TemporaryDirectory(prefix="mlsync_", dir="/tmp") as tmp:
             "Face missing in one or more frames; lip synchronization cannot be certified"
         )
     result = work / "results/v15/dub.mp4"
+    preserved = work / "results/v15/detail.mp4"
+    if preserved.is_file():
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-v",
+                "error",
+                "-y",
+                "-i",
+                str(preserved),
+                "-i",
+                str(work / "audio.wav"),
+                "-map",
+                "0:v:0",
+                "-map",
+                "1:a:0",
+                "-c:v",
+                "copy",
+                "-af",
+                "apad",
+                "-c:a",
+                "aac",
+                "-shortest",
+                str(result),
+            ],
+            check=True,
+        )
     if not result.is_file():
         raise RuntimeError("MuseTalk produced no output; inspect upstream logs")
 
@@ -100,7 +133,7 @@ with tempfile.TemporaryDirectory(prefix="mlsync_", dir="/tmp") as tmp:
     result_info = video_info(result)
     if abs(float(source_info["duration"]) - float(result_info["duration"])) > 0.1:
         raise RuntimeError("Lip-sync output duration differs from source")
-    if abs(int(source_info["nb_read_frames"]) - int(result_info["nb_read_frames"])) > 1:
+    if int(source_info["nb_read_frames"]) != int(result_info["nb_read_frames"]):
         raise RuntimeError("Lip-sync output lost frames")
     shutil.copyfile(result, r["output"])
 Path(a.response).write_text(

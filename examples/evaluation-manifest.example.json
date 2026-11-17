@@ -1,0 +1,21 @@
+{
+  "status": "template_not_measured",
+  "clips": [
+    {
+      "id": "rehearsal-01",
+      "path": "private/clip-01.mp4",
+      "sha256": null,
+      "speaker_id": "consenting-speaker-01",
+      "split": "rehearsal",
+      "slices": ["clean", "single-speaker"],
+      "permission_record": "private/consent-01.txt",
+      "redistribution_allowed": false,
+      "reference_transcript": null,
+      "reviewed_hindi": null,
+      "model_revisions": {},
+      "hardware_record": null,
+      "reviewers": [],
+      "release_approved": false
+    }
+  ]
+}

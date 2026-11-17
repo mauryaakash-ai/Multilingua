@@ -2,7 +2,7 @@
 import argparse,json,re,shutil,subprocess,tempfile,pickle,time
 from pathlib import Path
 p=argparse.ArgumentParser();p.add_argument('--request');p.add_argument('--response');a=p.parse_args()
-r=json.loads(Path(a.request).read_text());repo=Path(r['repo']).resolve()
+r=json.loads(Path(a.request).read_text(encoding='utf-8'));repo=Path(r['repo']).resolve()
 # Upstream invokes FFmpeg through shell strings. Stage media under safe paths.
 if not re.fullmatch(r'[A-Za-z0-9_./-]+',str(repo)):
     raise ValueError('MuseTalk repository path must not contain whitespace or shell metacharacters')

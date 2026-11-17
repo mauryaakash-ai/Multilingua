@@ -8,9 +8,10 @@ p = argparse.ArgumentParser()
 p.add_argument('--request', required=True)
 p.add_argument('--response', required=True)
 a = p.parse_args()
-r = json.loads(Path(a.request).read_text())
+r = json.loads(Path(a.request).read_text(encoding='utf-8'))
 if r.get('language', 'hi') != 'hi':
     raise ValueError('This configuration supports Hindi only')
+import numpy as np
 import torch
 import soundfile as sf
 from parler_tts import ParlerTTSForConditionalGeneration
@@ -19,9 +20,9 @@ from transformers import AutoTokenizer
 started = time.monotonic()
 device = r.get('device', 'cuda')
 model_path = r['model']
-model = ParlerTTSForConditionalGeneration.from_pretrained(model_path).to(device).eval()
-tokenizer = AutoTokenizer.from_pretrained(model_path)
-description_tokenizer = AutoTokenizer.from_pretrained(model.config.text_encoder._name_or_path)
+model = ParlerTTSForConditionalGeneration.from_pretrained(model_path, revision=r.get('revision')).to(device).eval()
+tokenizer = AutoTokenizer.from_pretrained(model_path, revision=r.get('revision'))
+description_tokenizer = AutoTokenizer.from_pretrained(model.config.text_encoder._name_or_path, revision=r.get('text_encoder_revision'))
 description = r.get('description', 'Rohit speaks in a mature male voice with a slightly low pitch and a calm, formal delivery at a moderately quick pace. Very clear audio, close recording, no background noise.')
 d = description_tokenizer(description, return_tensors='pt').to(device)
 loaded = time.monotonic()
@@ -35,6 +36,8 @@ for item in r.get('items', [r]):
             prompt_input_ids=tokens.input_ids, prompt_attention_mask=tokens.attention_mask,
             max_new_tokens=2048)
     audio = generation.float().cpu().numpy().squeeze()
+    if audio.ndim != 1 or not audio.size or not np.isfinite(audio).all():
+        raise ValueError('TTS returned empty, nonfinite or non-mono audio')
     sr = model.config.sampling_rate
     Path(item['output']).parent.mkdir(parents=True, exist_ok=True)
     sf.write(item['output'], audio, sr)

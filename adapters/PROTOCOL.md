@@ -13,3 +13,19 @@ conflicts are isolated and GPU memory is released when the process ends.
 The orchestrator checks requested output files rather than trusting arbitrary returned paths.
 No silent mock, no pass-through fallback for lip generation. Audio-only must be explicitly selected.
 Adapters are supplied integrations, not GPU-validated builds. Freeze upstream commits after local validation.
+
+## Validation and revisions
+
+The controller rejects malformed/empty text and invalid timelines before synthesis. It clears each
+requested adapter output before invocation and keeps every render attempt in a fresh directory.
+Stage settings cannot override the reviewed text, language or controller-owned output paths.
+A timeout terminates the adapter process group on Linux, including nested lip workers.
+
+Translation accepts `--revision COMMIT`; both TTS adapters accept `revision` in their JSON settings.
+Parler's separate description tokenizer accepts `text_encoder_revision`. ASR supports explicit
+snapshot paths via `--model`; pin the downloaded snapshot for reproduction. Use the exact MuseTalk
+checkout commit, and record it with all auxiliary assets. Pinning weights does not automatically
+pin every transitive remote-code or tokenizer dependency: inspect those separately.
+
+Generated TTS arrays must be nonempty, finite and mono. Automated audio checks do not establish
+intelligibility. Model adapters still require actual target-environment inference validation.

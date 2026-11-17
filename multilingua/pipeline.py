@@ -95,6 +95,8 @@ class Pipeline:
             self.progress(0.25, 'Recognizing English speech')
             asr, state['timings']['asr'] = self.adapter('asr', job, {
                 'audio': str(job / 'source.wav'), 'language': 'en'})
+            if asr.get('segments') == []:
+                raise ValueError('No speech detected; use a clip with clear English speech')
             segments = validate_segments(asr.get('segments'), state['duration'])
             self.progress(0.6, 'Translating speech into Hindi')
             mt, state['timings']['translation'] = self.adapter('translate', job, {

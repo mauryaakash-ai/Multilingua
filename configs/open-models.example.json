@@ -1,0 +1,36 @@
+{
+  "timeout_seconds": 1800,
+  "max_speech_speed": 1.25,
+  "commands": {
+    "asr": [
+      "{project}/.venv-speech/bin/python",
+      "{project}/adapters/asr.py",
+      "--model",
+      "{project}/models/whisper-small-en",
+      "--device",
+      "cpu"
+    ],
+    "translate": [
+      "{project}/.venv-open-models/bin/python",
+      "{project}/adapters/translate_marian.py",
+      "--model",
+      "{project}/models/opus-en-hi"
+    ],
+    "tts": [
+      "{project}/.venv-open-models/bin/python",
+      "{project}/adapters/tts_mms.py"
+    ],
+    "lipsync": [
+      "{python}",
+      "{project}/adapters/lipsync_musetalk.py"
+    ]
+  },
+  "tts": {
+    "model": "{project}/models/mms-tts-hin"
+  },
+  "lipsync": {
+    "repo": "${HOME}/MuseTalk",
+    "python": "${HOME}/MuseTalk/.venv/bin/python",
+    "batch_size": 2
+  }
+}

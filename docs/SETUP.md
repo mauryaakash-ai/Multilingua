@@ -53,6 +53,18 @@ Upstream model cards mention newer successors. Keep the original adapters for pr
 
 Never paste tokens into JSON configs, shell scripts committed to Git or adapter requests. Authenticate through the official model-host CLI in the model environment. Review `trust_remote_code` sources before allowing them to execute.
 
+### Optional setup without a Hugging Face account
+
+For a classroom audio dub, install the public checkpoint preset on Linux with Python 3.11 and [uv](https://docs.astral.sh/uv/). The first setup downloads about 900 MB of model files, plus the Python packages.
+
+```bash
+bash scripts/setup_open_models.sh
+.venv/bin/python -m multilingua.cli --config configs/open-models.example.json doctor --audio-only
+.venv/bin/python -m multilingua.cli --config configs/open-models.example.json ui
+```
+
+This preset uses [Whisper small.en](https://huggingface.co/Systran/faster-whisper-small.en), [OPUS-MT](https://huggingface.co/Helsinki-NLP/opus-mt-en-hi), and [MMS Hindi speech](https://huggingface.co/facebook/mms-tts-hin). The MMS checkpoint is licensed for noncommercial use. Review the generated translation and shorten phrases that do not fit the available time. Lip synchronization still requires the separate MuseTalk setup above. Copy the example into an ignored local config before customizing paths.
+
 ## 3. Preflight
 
 ```bash

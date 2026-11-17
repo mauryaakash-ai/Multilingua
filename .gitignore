@@ -32,3 +32,5 @@ test-results/
 vendor/
 presentation/.build/
 outputs/
+
+.venv-open-models/

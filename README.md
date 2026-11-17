@@ -8,7 +8,7 @@ Help an educator bring a short English explanation to Hindi-speaking learners. U
 
 ![Multilingua studio](docs/assets/studio.png)
 
-> **Demo submission:** start with [the submission index](SUBMISSION.md), which maps the lab guidelines to the design, architecture, tech stack and example walkthrough. Local model-path and temporary public-login checks pass; full rehearsal and fluent English–Hindi audiovisual approval are still required. Models and private recordings are deliberately excluded from Git. See [validation](docs/VALIDATION.md).
+> **Demo submission:** start with [the complete submission document](SUBMISSION.md), which includes the design, architecture, tech stack and example walkthrough in one file. Local model-path and temporary public-login checks pass; full rehearsal and fluent English–Hindi audiovisual approval are still required. Models and private recordings are deliberately excluded from Git. See [validation](docs/VALIDATION.md).
 
 ## What it does
 
@@ -60,17 +60,7 @@ A separate authenticated FastAPI service can record or upload short clips for ba
 
 ## Project submission
 
-| Rubric item | Document / evidence |
-|---|---|
-| Use case and functionality | This README + [design: users and scope](docs/DESIGN.md) |
-| Eight-part design document | [Design and architecture](docs/DESIGN.md) |
-| Architecture diagram | [Diagram](docs/assets/architecture.svg) + Mermaid in design document |
-| Tech stack and third-party dependencies | [Technology register](docs/TECH_STACK.md) |
-| Evaluation slices, metrics and launch thresholds | [Evaluation plan](docs/EVALUATION.md) + [scorecard](examples/review-scorecard.csv) |
-| Actual checks and unresolved gaps | [Current validation](docs/VALIDATION.md) |
-| 15-minute overview, demo and audience Q&A | [November 18 runbook](docs/DEMO.md) |
-| Repository-wide findings and fixes | [Audit and rubric mapping](docs/AUDIT.md) |
-| Future work and scope | [Roadmap](docs/COMPLETION_PLAN.md) |
+[Complete submission document](SUBMISSION.md) contains the use case, all eight design sections, an embedded architecture diagram, tech stack, evaluation evidence, demo examples and setup instructions in one file. No separate Markdown documents are needed for the presentation.
 
 ## Checks
 

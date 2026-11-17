@@ -406,7 +406,7 @@ Uploads and outputs remain on disk. This studio is intended for one trusted loca
             with gr.Tab("System check"):
                 gr.Markdown(
                     "## Prepare the workstation\nCopy `configs/local.example.json` to `configs/local.json`, "
-                    "then set your Python environments and model paths. See **docs/SETUP.md** in the repository. "
+                    "then set your Python environments and model paths. See **output/pdf/Multilingua_Project_Report.pdf**, section 12, in the repository. "
                     "Checks below do not download or run models."
                 )
                 checks = gr.Dataframe(

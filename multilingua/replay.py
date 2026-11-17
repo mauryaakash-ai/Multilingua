@@ -13,15 +13,18 @@ from .pipeline import Pipeline, write_json
 
 
 def replay(config, source, output='runs', chunk_seconds=6, max_waiting=2, audio_only=False):
-    if not 1 <= chunk_seconds <= 30 or max_waiting < 1:
+    if (not math.isfinite(chunk_seconds) or not 1 <= chunk_seconds <= 30
+            or isinstance(max_waiting, bool) or not isinstance(max_waiting, int) or max_waiting < 1):
         raise ValueError('Use 1–30 second chunks and at least one waiting slot')
+    # Validate before starting a thread: an init failure in the worker otherwise looks like success.
+    pipe = Pipeline(config)
     source = Path(source).resolve()
     streams = media.probe(source)['streams']
     video = next((s for s in streams if s['codec_type'] == 'video'), None)
     if video is None or not any(s['codec_type'] == 'audio' for s in streams):
         raise ValueError('Replay input must contain video and audio')
     # Container duration can include trailing AAC padding after the last frame.
-    total = float(video.get('duration') or media.duration(source))
+    total = media.video_duration(source)
     if total > 600:
         raise ValueError('Replay supports at most 10 minutes')
     folder = Path(output).resolve()/('replay_'+uuid.uuid4().hex)
@@ -32,7 +35,6 @@ def replay(config, source, output='runs', chunk_seconds=6, max_waiting=2, audio_
     epoch = time.monotonic()
 
     def worker():
-        pipe = Pipeline(config)
         while not stop.is_set():
             try:
                 item = jobs.get(timeout=0.1)

@@ -6,10 +6,9 @@ def simulate(arrivals, processing_seconds, max_waiting=3):
         raise ValueError('Mismatched inputs or invalid queue bound')
     previous=-1.0
     finish=0.0
-    completions=[]
     rows=[]
     for index,(arrival,cost) in enumerate(zip(arrivals,processing_seconds)):
-        if not all(math.isfinite(x) for x in (arrival,cost)) or arrival<previous or cost<0:
+        if not all(math.isfinite(x) for x in (arrival,cost)) or arrival<0 or arrival<previous or cost<0:
             raise ValueError('Arrivals must be ordered and costs finite/nonnegative')
         # Count jobs not yet started; the active job is not a waiting slot.
         waiting=sum(row['start']>arrival for row in rows)

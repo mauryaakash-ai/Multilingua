@@ -21,6 +21,16 @@ def duration(path):
         raise ValueError('Media duration must be positive and finite')
     return value
 
+def video_duration(path):
+    data = probe(path)
+    video = next((s for s in data['streams'] if s['codec_type'] == 'video'), None)
+    if video is None:
+        raise ValueError('Media must contain video')
+    value = float(video.get('duration') or data['format']['duration'])
+    if not math.isfinite(value) or value <= 0:
+        raise ValueError('Video duration must be positive and finite')
+    return value
+
 def ffmpeg(*args):
     run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', *args])
 
@@ -44,6 +54,8 @@ def cut(src, dst, start, seconds):
            '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-r', '25', dst)
 
 def fit_audio(src, dst, seconds, max_speed=1.25):
+    if not math.isfinite(seconds) or seconds <= 0 or not 1 <= max_speed <= 1.25:
+        raise ValueError('Use a positive finite slot and a speech speed cap between 1 and 1.25')
     actual = duration(src)
     ratio = actual / seconds
     if ratio > max_speed + 0.001:

@@ -41,7 +41,7 @@ class MediaIntegration(unittest.TestCase):
         self.assertAlmostEqual(media.duration(output),2,delta=0.2)
         self.assertFalse(read_json(job/'job.json')['lip_sync'])
         self.assertIn('नमस्ते',(job/'subtitles.srt').read_text())
-        self.assertEqual(len(list(job.glob('part_*.mp4'))),3)
+        self.assertEqual(len(list((job/'current').glob('part_*.mp4'))),3)
     def test_lip_failure_never_succeeds_as_passthrough(self):
         job=self.pipe.prepare(self.video,self.root/'runs')
         with self.assertRaises(RuntimeError): self.pipe.render(job)
@@ -52,9 +52,34 @@ class MediaIntegration(unittest.TestCase):
         job=self.pipe.prepare(self.video,self.root/'runs')
         output=self.pipe.render(job,audio_only=True)
         original=output.read_bytes()
+        metadata={name:(job/name).read_bytes() for name in ('subtitles.srt','reviewed_segments.json','alignment.json','provenance.json')}
+        previous=read_json(job/'job.json')['published_render']
         with self.assertRaises(RuntimeError): self.pipe.render(job)
         self.assertEqual(output.read_bytes(),original)
+        self.assertEqual(read_json(job/'job.json')['published_render'],previous)
+        self.assertFalse(read_json(job/'job.json')['lip_sync'])
+        for name, content in metadata.items():
+            self.assertEqual((job/name).read_bytes(),content)
         self.assertFalse((job/'output.pending.mp4').exists())
+
+    def test_config_cannot_override_reviewed_text_or_output(self):
+        self.pipe.config['tts'] = {'text': 'wrong text', 'output': str(self.root/'wrong.wav')}
+        job = self.pipe.prepare(self.video, self.root/'runs')
+        self.pipe.render(job, audio_only=True)
+        request = read_json(next((job/'current').glob('segment_*/tts_request.json')))
+        self.assertEqual(request['text'], 'नमस्ते')
+        self.assertFalse((self.root/'wrong.wav').exists())
+        import zipfile
+        with zipfile.ZipFile(job/'delivery.zip') as bundle:
+            self.assertIn('AI-DUBBED.txt', bundle.namelist())
+            self.assertEqual(bundle.read('output.mp4'), (job/'output.mp4').read_bytes())
+
+    def test_corrupt_state_still_releases_lock(self):
+        job = self.pipe.prepare(self.video, self.root/'runs')
+        (job/'job.json').write_text('broken')
+        with self.assertRaises(ValueError):
+            self.pipe.render(job, audio_only=True)
+        self.assertFalse((job/'.render.lock').exists())
 
     def test_long_audio_rejected_without_truncation(self):
         src=self.root/'long.wav'

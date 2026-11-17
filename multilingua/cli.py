@@ -1,14 +1,14 @@
 import argparse
 import json
-import shutil
-from pathlib import Path
 from .pipeline import Pipeline
+from .config import diagnose
 
 def main():
     p = argparse.ArgumentParser(description='English-to-Hindi video dubbing research pipeline')
     p.add_argument('--config', default='configs/local.json')
     sub = p.add_subparsers(dest='action', required=True)
-    sub.add_parser('doctor')
+    doctor = sub.add_parser('doctor')
+    doctor.add_argument('--audio-only', action='store_true')
     prep = sub.add_parser('prepare'); prep.add_argument('video'); prep.add_argument('--runs', default='runs')
     render = sub.add_parser('render'); render.add_argument('job'); render.add_argument('--review')
     render.add_argument('--audio-only', action='store_true', help='Explicitly skip lip editing')
@@ -20,13 +20,9 @@ def main():
     sub.add_parser('ui')
     args = p.parse_args()
     if args.action == 'doctor':
-        checks = {name: shutil.which(name) for name in ('ffmpeg','ffprobe','nvidia-smi')}
-        checks['configuration_exists'] = Path(args.config).is_file()
-        if checks['configuration_exists']:
-            pipe = Pipeline(args.config)
-            checks['adapter_executables'] = {stage:shutil.which(pipe.command(stage)[0])
-                                            for stage in ('asr','translate','tts','lipsync')}
-        print(json.dumps(checks, indent=2)); return
+        checks = diagnose(args.config, args.audio_only)
+        print(json.dumps(checks, indent=2))
+        return 0 if checks['ready'] else 1
     if args.action == 'ui':
         from .ui import launch
         launch(args.config); return
@@ -39,4 +35,4 @@ def main():
     elif args.action == 'render': print(pipe.render(args.job,args.review,args.audio_only))
 
 if __name__ == '__main__':
-    main()
+    raise SystemExit(main())

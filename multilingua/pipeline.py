@@ -1,14 +1,13 @@
 import json
 import os
-import shutil
 import subprocess
 import time
 import uuid
 from pathlib import Path
 from . import media
 from .timeline import slots, subtitles
+from .config import ROOT, load_config, command
 
-ROOT = Path(__file__).resolve().parents[1]
 
 def write_json(path, value):
     tmp = path.with_suffix(path.suffix + '.tmp')
@@ -21,14 +20,11 @@ def read_json(path):
 class Pipeline:
     def __init__(self, config):
         self.config_path = Path(config).resolve()
-        self.config = read_json(self.config_path)
+        self.config = load_config(self.config_path)
         self.base = self.config_path.parent
 
     def command(self, stage):
-        command = self.config.get('commands', {}).get(stage)
-        if not isinstance(command, list) or not command or not all(isinstance(x,str) for x in command):
-            raise ValueError(f'Missing command array for {stage} in configuration')
-        return [x.replace('{project}', str(ROOT)) for x in command]
+        return command(self.config, stage)
 
     def adapter(self, stage, job, payload):
         request, response = job / f'{stage}_request.json', job / f'{stage}_response.json'

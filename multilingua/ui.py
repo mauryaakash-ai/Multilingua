@@ -1,9 +1,12 @@
 """Local, single-user dubbing studio. Model work is serialized across UI events."""
 
+import atexit
 from pathlib import Path
 
 from .config import diagnose
 from .pipeline import Pipeline, read_json, write_json
+from .quick import MAX_CLIP_SECONDS, quick_dub, warm_models
+from .resident import ResidentPool
 from .timeline import validate_segments
 
 CSS = """
@@ -81,6 +84,15 @@ def build_app(config="configs/local.json", runs="runs"):
     runs = Path(runs).resolve()
     report = diagnose(config)
     audio_ready = diagnose(config, audio_only=True)["ready"]
+    quick_pool = None
+    warmed = False
+
+    def get_quick_pool():
+        nonlocal quick_pool
+        if quick_pool is None:
+            quick_pool = ResidentPool(runs / "quick" / "worker-logs")
+            atexit.register(quick_pool.close)
+        return quick_pool
 
     def require_setup(stages, action):
         checks = diagnose(config, stages=stages)["checks"]
@@ -89,6 +101,48 @@ def build_app(config="configs/local.json", runs="runs"):
             raise ValueError(
                 f"{action} needs setup ({', '.join(missing)}). Open the System check tab."
             )
+
+    def warm_quick(evt: gr.SelectData):
+        nonlocal warmed
+        if not evt.selected or warmed or not audio_ready:
+            return gr.skip()
+        try:
+            warm_models(config, get_quick_pool())
+        except (ValueError, OSError, RuntimeError, KeyError):
+            return "Models will load when you submit a clip."
+        warmed = True
+        return "Local models are ready."
+
+    def process_quick(video, consent):
+        yield "", "", None, None, "Listening to your clip…"
+        try:
+            if not consent:
+                raise ValueError("Confirm permission to record or dub the clip first.")
+            if not video:
+                raise ValueError("Record or upload a short English clip first.")
+            require_setup(("asr", "translate", "tts"), "Quick Webcam")
+            preview = quick_dub(video, config, runs / "quick", get_quick_pool())
+            try:
+                draft = next(preview)
+                yield (
+                    draft["english"],
+                    draft["hindi"],
+                    None,
+                    None,
+                    f"Hindi text ready in {draft['text_seconds']:.1f} s. Generating the voice…",
+                )
+                dub = next(preview)
+            finally:
+                preview.close()
+            yield (
+                gr.skip(),
+                gr.skip(),
+                dub["video"],
+                dub["subtitles"],
+                f"Preview ready in {dub['seconds']:.1f} s after upload. Review the Hindi before sharing.",
+            )
+        except (ValueError, OSError, RuntimeError, KeyError) as exc:
+            yield gr.skip(), gr.skip(), None, None, f"Preview stopped. {exc}"
 
     def prepare(video, consent, progress=gr.Progress()):
         # Clear earlier job/output before any operation that might fail.
@@ -288,6 +342,47 @@ def build_app(config="configs/local.json", runs="runs"):
                         "Render time includes model loading. It is not live streaming latency. "
                         "Jobs and logs stay in your local runs folder until you delete them."
                     )
+            with gr.Tab("Quick Webcam") as quick_tab:
+                gr.Markdown(
+                    f"## Record and translate\n"
+                    f"Record up to {MAX_CLIP_SECONDS} seconds of English. "
+                    "Press Stop to translate and hear a Hindi dub. "
+                    "The quick preview keeps the original mouth movements."
+                )
+                quick_ready = gr.Markdown(
+                    "Warming up local models…"
+                    if audio_ready
+                    else "Check model setup to get started."
+                )
+                quick_consent = gr.Checkbox(label="I have permission to record or dub this clip.")
+                with gr.Row():
+                    webcam = gr.Video(
+                        label="English recording",
+                        sources=["webcam", "upload"],
+                        include_audio=True,
+                        webcam_options=gr.WebcamOptions(
+                            mirror=False,
+                            constraints={
+                                "width": {"ideal": 640},
+                                "height": {"ideal": 360},
+                                "frameRate": {"ideal": 24},
+                            },
+                        ),
+                        height=270,
+                    )
+                    quick_output = gr.Video(
+                        label="Hindi audio dub · AI-generated",
+                        interactive=False,
+                        height=270,
+                    )
+                quick_button = gr.Button("Translate clip", variant="primary")
+                quick_status = gr.Textbox(label="Preview status", interactive=False)
+                with gr.Row():
+                    quick_english = gr.Textbox(
+                        label="English transcript", interactive=False, lines=3
+                    )
+                    quick_hindi = gr.Textbox(label="Hindi translation", interactive=False, lines=3)
+                quick_captions = gr.File(label="Download Hindi subtitles", interactive=False)
             with gr.Tab("How it works"):
                 gr.Markdown("""## From a spoken idea to a reviewed dub
 
@@ -342,6 +437,16 @@ Uploads and outputs remain on disk. This studio is intended for one trusted loca
             '<div id="footer">Multilingua · English–Hindi recorded-video research prototype · Review before sharing</div>'
         )
         shared = {"concurrency_id": "model-work", "concurrency_limit": 1}
+        quick_queue = {"concurrency_id": "quick-work", "concurrency_limit": 1}
+        quick_tab.select(warm_quick, outputs=quick_ready, **quick_queue)
+        gr.on(
+            triggers=[webcam.stop_recording, quick_button.click],
+            fn=process_quick,
+            inputs=[webcam, quick_consent],
+            outputs=[quick_english, quick_hindi, quick_output, quick_captions, quick_status],
+            api_name="quick_dub",
+            **quick_queue,
+        )
         prep.click(
             prepare,
             [source, consent],

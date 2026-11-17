@@ -6,6 +6,7 @@ Uses installed Chrome (or Playwright Chromium). Saves clearly named synthetic-te
 
 import json
 import os
+import re
 import shutil
 import socket
 import subprocess
@@ -93,7 +94,12 @@ def main():
                         time.sleep(0.1)
                 with sync_playwright() as p:
                     browser = p.chromium.launch(
-                        executable_path=shutil.which("google-chrome"), args=["--no-sandbox"]
+                        executable_path=shutil.which("google-chrome"),
+                        args=[
+                            "--no-sandbox",
+                            "--use-fake-device-for-media-stream",
+                            "--use-fake-ui-for-media-stream",
+                        ],
                     )
                     page = browser.new_page(viewport={"width": 1440, "height": 1000})
                     errors = []
@@ -157,6 +163,20 @@ def main():
                     page.get_by_role("button", name="Generate dubbed video").click()
                     expect(page.locator("#status")).to_contain_text("lipsync failed", timeout=45000)
                     expect(page.locator('a[href$="/delivery.zip"]')).not_to_be_visible()
+                    page.get_by_role("tab", name="Quick Webcam").click()
+                    page.get_by_role("checkbox", name="I have permission to record").check()
+                    page.get_by_role("button", name="Click to Access Webcam").click()
+                    record = page.get_by_role("button", name="start recording")
+                    record.click()
+                    expect(record).to_have_text("Stop")
+                    page.wait_for_timeout(1300)  # Let the simulated webcam record a real container.
+                    record.click()
+                    quick_status = page.get_by_role("textbox", name="Preview status")
+                    expect(quick_status).to_have_value(re.compile(r"^Preview ready"), timeout=20000)
+                    expect(page.get_by_role("textbox", name="Hindi translation")).to_have_value(
+                        "नमस्ते"
+                    )
+                    expect(page.locator('a[href$="/hindi.srt"]')).to_be_visible()
                     mobile = browser.new_page(viewport={"width": 390, "height": 844})
                     mobile.goto(url, wait_until="domcontentloaded")
                     mobile.get_by_role("heading", name="Your ideas. A new language.").wait_for()
@@ -165,7 +185,7 @@ def main():
                     assert not errors, errors
                     browser.close()
                     print(
-                        "PASS: upload, permission, review, audio render, ZIP download, lip failure, mobile layout; no JS errors."
+                        "PASS: studio review, audio render, ZIP download, lip failure, webcam Stop → Hindi preview, mobile layout."
                     )
             finally:
                 server.terminate()

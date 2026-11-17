@@ -52,6 +52,10 @@ python -m multilingua.cli --config configs/local.json render runs/JOB_ID
 
 Outputs live under `runs/JOB_ID/renders/RENDER_ID/`; top-level output aliases point through the atomic `current` link. Download `delivery.zip` for video, captions, review text, alignment, provenance and disclosure together. Watch and listen to the entire result before sharing, and label the clip **AI-dubbed**.
 
+## Quick Webcam
+
+Open **Quick Webcam** in the local studio, confirm permission, record up to 15 seconds of English, then press **Stop**. Hindi text appears first, followed by a playable Hindi dub and subtitles. Quick Webcam uses the original video frames and one Hindi voice track for the clip. Use **Studio** for reviewed, phrase-aligned lip-sync output.
+
 ## Experimental capture and evaluation
 
 A separate authenticated FastAPI service can record or upload short clips for background dubbing. It supports optional resident workers, MuseTalk or LatentSync, and experimental Tamil and Telugu presets. Use the Hindi review studio for the classroom walkthrough. See [service setup](docs/SETUP.md#experimental-local-capture-service) and [prior experimental results](docs/EVALUATION_REPORT.md).

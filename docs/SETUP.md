@@ -78,6 +78,8 @@ Doctor exits 1 for missing required dependencies/configuration and 0 when local 
 
 ## 4. UI workflow
 
+**Quick Webcam** uses the same local ASR, translation, and Hindi voice models as the studio. Open the tab to warm the workers, confirm permission, allow browser access to the camera and microphone, and record up to 15 seconds. Stop triggers translation automatically. For an uploaded clip or retry, press **Translate clip**. The tab displays processing time after upload. The quick preview replaces the English soundtrack and holds the last frame when Hindi speech needs more time. Use the **Studio** tab for lip editing and phrase-level translation review.
+
 Upload → confirm permission → transcribe/translate → edit Hindi → confirm review → select mode → generate → watch/listen → download. Source text/timing are locked in the browser and validated server-side. Changing the source clears previous results and permission/review checks. Editing Hindi resets review approval. Progress describes the actual active stage, not estimated completion time.
 
 **Allow a longer video to fit the Hindi speech** is on by default in the studio and applies to both modes. When a phrase would need more than 1.25× speed to fit, the studio slows that section of video and shifts later subtitles. Turn it off if the output must match the original duration, then shorten any Hindi row flagged by the renderer.

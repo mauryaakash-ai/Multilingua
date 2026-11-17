@@ -11,6 +11,8 @@ p.add_argument("--revision", default=None)
 p.add_argument("--device", default="cpu")
 a = p.parse_args()
 r = json.loads(Path(a.request).read_text(encoding="utf-8"))
+if r.get("source") != "eng_Latn" or r.get("target") != "hin_Deva":
+    raise ValueError("Only English to Hindi translation is supported")
 os.environ.setdefault(
     "HF_MODULES_CACHE", str(Path(__file__).resolve().parents[1] / "models" / "modules")
 )

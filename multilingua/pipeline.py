@@ -16,10 +16,10 @@ from pathlib import Path
 
 from . import media
 from .concise import compact_hindi
-from .timing_fit import rebalance
 from .config import ROOT, command, load_config
 from .languages import language, validate_model_route
 from .timeline import frame_slots, sentence_segments, subtitles, validate_segments
+from .timing_fit import rebalance
 
 
 def write_json(path, value):
@@ -264,82 +264,154 @@ class Pipeline:
                         continue
                     if self.cancelled.is_set():
                         raise RuntimeError("Job cancelled")
-                    self.progress(0.4 * index / max(1, len(timeline)),
-                                  f"Checking speech timing {index + 1}/{len(timeline)} before lip generation")
+                    self.progress(
+                        0.4 * index / max(1, len(timeline)),
+                        f"Checking speech timing {index + 1}/{len(timeline)} before lip generation",
+                    )
                     work = attempt / f"segment_{index:04d}"
                     slot = row["end"] - row["start"]
                     elapsed = 0.0
                     candidates = []
                     # Retry delivery only: never silently change approved words.
-                    retries = 2 if self.config.get("speech_delivery_retry", True) and any(
-                        str(x).endswith("tts_parler.py") for x in self.config.get("commands", {}).get("tts", [])
-                    ) else 0
+                    retries = (
+                        2
+                        if self.config.get("speech_delivery_retry", True)
+                        and any(
+                            str(x).endswith("tts_parler.py")
+                            for x in self.config.get("commands", {}).get("tts", [])
+                        )
+                        else 0
+                    )
                     original_text = row["translation"]
-                    compact = compact_hindi(original_text) if self.config.get("auto_compact_hindi", False) and state.get("target_language", "hi") == "hi" else original_text
+                    compact = (
+                        compact_hindi(original_text)
+                        if self.config.get("auto_compact_hindi", False)
+                        and state.get("target_language", "hi") == "hi"
+                        else original_text
+                    )
                     compact_retry = retries + 1 if compact != original_text else None
                     for retry in range(retries + 1 + (compact_retry is not None)):
                         overrides = None
                         if retry == compact_retry:
                             row["translation"] = compact
                         elif retry:
-                            base = self.config.get("tts", {}).get("description", "Rohit speaks clearly in Hindi.")
-                            overrides = {"description": base + (
-                                " Speak briskly and fluently, with short pauses and clear pronunciation."
-                                if retry == 1 else
-                                " Deliver the sentence quickly and clearly in one continuous breath, without long pauses."
-                            )}
+                            base = self.config.get("tts", {}).get(
+                                "description", "Rohit speaks clearly in Hindi."
+                            )
+                            overrides = {
+                                "description": base
+                                + (
+                                    " Speak briskly and fluently, with short pauses and clear pronunciation."
+                                    if retry == 1
+                                    else " Deliver the sentence quickly and clearly in one continuous breath, without long pauses."
+                                )
+                            }
                         _, took = synthesize(index, overrides)
                         elapsed += took
                         candidate = work / f"speech_candidate_{retry}.wav"
                         shutil.copyfile(work / "raw.wav", candidate)
                         try:
-                            fitted = media.fit_audio(work / "raw.wav", work / "audio.wav", slot,
-                                                     self.config.get("max_speech_speed", 1.25))
+                            fitted = media.fit_audio(
+                                work / "raw.wav",
+                                work / "audio.wav",
+                                slot,
+                                self.config.get("max_speech_speed", 1.25),
+                            )
                         except ValueError as exc:
-                            candidates.append({"retry": retry, "status": "too_long", "error": str(exc)})
+                            candidates.append(
+                                {"retry": retry, "status": "too_long", "error": str(exc)}
+                            )
                         else:
                             candidates.append({"retry": retry, "status": "fits", **fitted})
                             prepared[index] = (elapsed, fitted)
                             if row["translation"] != original_text:
-                                timing_edits.append({"start": row["start"], "end": row["end"], "original": original_text, "replacement": row["translation"], "human_review": "pending"})
+                                timing_edits.append(
+                                    {
+                                        "start": row["start"],
+                                        "end": row["end"],
+                                        "original": original_text,
+                                        "replacement": row["translation"],
+                                        "human_review": "pending",
+                                    }
+                                )
                             break
                     speech_costs[index] = elapsed
-                    write_json(work / "speech_preflight.json", {"start": row["start"], "end": row["end"],
-                               "text_unchanged": row["translation"] == original_text, "original_text": original_text, "generated_text": row["translation"], "candidates": candidates})
+                    write_json(
+                        work / "speech_preflight.json",
+                        {
+                            "start": row["start"],
+                            "end": row["end"],
+                            "text_unchanged": row["translation"] == original_text,
+                            "original_text": original_text,
+                            "generated_text": row["translation"],
+                            "candidates": candidates,
+                        },
+                    )
                     if index not in prepared:
-                        failures.append({"start": row["start"], "end": row["end"], "translation": row["translation"],
-                                         "reason": candidates[-1]["error"]})
+                        failures.append(
+                            {
+                                "start": row["start"],
+                                "end": row["end"],
+                                "translation": row["translation"],
+                                "reason": candidates[-1]["error"],
+                            }
+                        )
                 if failures and self.config.get("rebalance_speech_timing", False):
-                    raw_durations = {i: media.duration(attempt / f"segment_{i:04d}" / "raw.wav") for i in speech_costs}
+                    raw_durations = {
+                        i: media.duration(attempt / f"segment_{i:04d}" / "raw.wav")
+                        for i in speech_costs
+                    }
                     try:
-                        adjusted = rebalance(timeline, raw_durations,
-                                             max_speed=self.config.get("max_speech_speed", 1.25))
+                        adjusted = rebalance(
+                            timeline,
+                            raw_durations,
+                            max_speed=self.config.get("max_speech_speed", 1.25),
+                        )
                     except ValueError:
                         pass  # Preserve the detailed per-phrase failure report.
                     else:
                         for i in speech_costs:
                             before, after = timeline[i], adjusted[i]
                             if (before["start"], before["end"]) != (after["start"], after["end"]):
-                                timing_adjustments.append({"segment": i, "original_start": before["start"],
-                                    "original_end": before["end"], "start": after["start"], "end": after["end"]})
+                                timing_adjustments.append(
+                                    {
+                                        "segment": i,
+                                        "original_start": before["start"],
+                                        "original_end": before["end"],
+                                        "start": after["start"],
+                                        "end": after["end"],
+                                    }
+                                )
                             work = attempt / f"segment_{i:04d}"
-                            fitted = media.fit_audio(work / "raw.wav", work / "audio.wav",
-                                                     after["end"] - after["start"], self.config.get("max_speech_speed", 1.25))
+                            fitted = media.fit_audio(
+                                work / "raw.wav",
+                                work / "audio.wav",
+                                after["end"] - after["start"],
+                                self.config.get("max_speech_speed", 1.25),
+                            )
                             prepared[i] = (speech_costs[i], fitted)
                             detail = read_json(work / "speech_preflight.json")
-                            detail.update(final_start=after["start"], final_end=after["end"],
-                                          final_fit=fitted, timing_rebalanced=True)
+                            detail.update(
+                                final_start=after["start"],
+                                final_end=after["end"],
+                                final_fit=fitted,
+                                timing_rebalanced=True,
+                            )
                             write_json(work / "speech_preflight.json", detail)
                         timeline = adjusted
                         segments = [row for row in timeline if row.get("translation", "").strip()]
                         failures = []
                 write_json(attempt / "timing_adjustments.json", timing_adjustments)
-                write_json(attempt / "speech_preflight.json", {"passed": not failures, "failures": failures,
-                           "lip_generation_started": False})
+                write_json(
+                    attempt / "speech_preflight.json",
+                    {"passed": not failures, "failures": failures, "lip_generation_started": False},
+                )
                 write_json(attempt / "timing_edits.json", timing_edits)
                 write_json(attempt / "reviewed_segments.json", segments)
                 if failures:
-                    summary = "; ".join(f"{r['start']:.2f}–{r['end']:.2f}s: {r['reason']}" for r in failures)
+                    summary = "; ".join(
+                        f"{r['start']:.2f}–{r['end']:.2f}s: {r['reason']}" for r in failures
+                    )
                     raise ValueError("Speech timing check failed BEFORE lip generation. " + summary)
 
             pending_tts = None
@@ -362,15 +434,23 @@ class Pipeline:
                 media.cut(job / "source.mp4", work / "video.mp4", segment["start"], seconds)
                 speech = bool(segment.get("translation", "").strip())
                 if speech:
-                    _, elapsed = (None, prepared[i][0]) if preflight else (synthesized if synthesized is not None else synthesize(i))
+                    _, elapsed = (
+                        (None, prepared[i][0])
+                        if preflight
+                        else (synthesized if synthesized is not None else synthesize(i))
+                    )
                     if not (work / "raw.wav").is_file():
                         raise RuntimeError("TTS did not create the requested WAV file")
                     try:
-                        fitted = prepared[i][1] if preflight else media.fit_audio(
-                            work / "raw.wav",
-                            work / "audio.wav",
-                            seconds,
-                            self.config.get("max_speech_speed", 1.25),
+                        fitted = (
+                            prepared[i][1]
+                            if preflight
+                            else media.fit_audio(
+                                work / "raw.wav",
+                                work / "audio.wav",
+                                seconds,
+                                self.config.get("max_speech_speed", 1.25),
+                            )
                         )
                     except ValueError as exc:
                         raise ValueError(
@@ -414,6 +494,24 @@ class Pipeline:
                 shutil.copyfile(job / "source.mp4", attempt / "output.mp4")
             else:
                 media.concatenate(parts, attempt / "output.mp4")
+            enhancement = None
+            if self.config.get("enhance_mouth") and not silent and not audio_only:
+                self.progress(0.94, "Restoring mouth detail (recorded-video quality mode)")
+                if self.resident_pool:
+                    self.resident_pool.evict("lipsync")
+                enhanced = attempt / "output.enhanced.mp4"
+                unenhanced = attempt / "output.unenhanced.mp4"
+                (attempt / "output.mp4").replace(unenhanced)
+                enhancement, enhancement_seconds = self.adapter(
+                    "enhance", attempt, {"video": str(unenhanced), "output": str(enhanced)}
+                )
+                if not enhanced.is_file():
+                    raise RuntimeError("Enhancer returned without creating a video")
+                if abs(media.video_duration(enhanced) - media.video_duration(unenhanced)) > 0.04:
+                    raise RuntimeError("Enhancement changed video duration")
+                enhancement["wall_seconds"] = enhancement_seconds
+                enhanced.replace(attempt / "output.mp4")
+                enhancement["video"] = str(attempt / "output.mp4")
             measured = media.duration(attempt / "output.mp4")
             if abs(measured - state["duration"]) > 0.12:
                 raise RuntimeError("Output duration drift exceeds 120 ms")
@@ -435,6 +533,7 @@ class Pipeline:
                 "human_quality_review": "pending",
                 "automatic_timing_edits": timing_edits,
                 "timing_adjustments": timing_adjustments,
+                "mouth_enhancement": enhancement,
                 "note": "AI-dubbed output. Review meaning, voice and visual quality before sharing. "
                 "Model revision/license records are supplied separately by the operator.",
             }

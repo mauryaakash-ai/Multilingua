@@ -32,3 +32,6 @@ test-results/
 vendor/
 presentation/.build/
 outputs/
+
+# Downloaded dataset archives remain local.
+datasets.zip

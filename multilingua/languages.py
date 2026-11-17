@@ -8,7 +8,9 @@ CATALOG = json.loads((Path(__file__).with_name("languages.json")).read_text())
 
 def language(code):
     if code not in CATALOG:
-        raise ValueError(f"Unsupported target language: {code}. Only English to Hindi ('hi') is supported.")
+        raise ValueError(
+            f"Unsupported target language: {code}. Only English to Hindi ('hi') is supported."
+        )
     return CATALOG[code]
 
 

@@ -10,7 +10,7 @@ p.add_argument("--request", required=True)
 p.add_argument("--response", required=True)
 a = p.parse_args()
 r = json.loads(Path(a.request).read_text(encoding="utf-8"))
-if r.get("language", "hi") not in ("hi", "ta", "te"):
+if r.get("language", "hi") != "hi":
     raise ValueError("Unsupported configured TTS language")
 import numpy as np
 import soundfile as sf

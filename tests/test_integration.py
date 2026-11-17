@@ -61,6 +61,31 @@ class MediaIntegration(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
+    def test_optional_enhancer_runs_after_lips_and_preserves_baseline(self):
+        adapter = self.root / "fake.py"
+        adapter.write_text(
+            FAKE.replace(
+                "else: raise RuntimeError('Deliberate failing lip adapter')",
+                "else:\n    import shutil\n    shutil.copyfile(r['video'],r['output'])\n    out={'video':r['output'],'synthetic_test_only':True}",
+            )
+        )
+        self.pipe.config["enhance_mouth"] = True
+        self.pipe.config["commands"]["enhance"] = [sys.executable, str(adapter), "enhance"]
+        job = self.pipe.prepare(self.video, self.root / "runs")
+        output = self.pipe.render(job)
+        self.assertTrue(output.is_file())
+        self.assertTrue((job / "current" / "output.unenhanced.mp4").is_file())
+        self.assertTrue(
+            read_json(job / "provenance.json")["mouth_enhancement"]["synthetic_test_only"]
+        )
+
+    def test_audio_only_skips_optional_enhancer(self):
+        self.pipe.config["enhance_mouth"] = True
+        # No enhancer command configured: audio-only must never invoke it.
+        job = self.pipe.prepare(self.video, self.root / "runs")
+        self.pipe.render(job, audio_only=True)
+        self.assertIsNone(read_json(job / "provenance.json")["mouth_enhancement"])
+
     def test_prepare_review_audio_only_and_timeline(self):
         job = self.pipe.prepare(self.video, self.root / "runs")
         self.assertEqual(read_json(job / "job.json")["status"], "awaiting_review")

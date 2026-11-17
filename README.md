@@ -54,7 +54,7 @@ Outputs live under `runs/JOB_ID/renders/RENDER_ID/`; top-level output aliases po
 
 ## Experimental capture and evaluation
 
-A separate authenticated FastAPI service can record or upload short clips for background dubbing. It supports optional resident workers, MuseTalk or LatentSync, and experimental Tamil and Telugu presets. Use the Hindi review studio for the classroom walkthrough. See [service setup](docs/SETUP.md#experimental-local-capture-service) and [prior experimental results](docs/EVALUATION_REPORT.md).
+A separate authenticated FastAPI service can record or upload short clips for background dubbing. It supports optional resident workers, MuseTalk or LatentSync, for English → Hindi only. Use the Hindi review studio for the classroom walkthrough. See [service setup](docs/SETUP.md#experimental-local-capture-service) and [prior experimental results](docs/EVALUATION_REPORT.md).
 
 ## Project submission
 

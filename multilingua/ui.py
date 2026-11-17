@@ -96,7 +96,11 @@ def build_app(config="configs/local.json", runs="runs", resident_pool=None):
                 raise ValueError(
                     "Confirm permission to process and dub the video before continuing."
                 )
-            pipe = Pipeline(config, resident_pool=resident_pool, progress=lambda value, message: progress(value, desc=message))
+            pipe = Pipeline(
+                config,
+                resident_pool=resident_pool,
+                progress=lambda value, message: progress(value, desc=message),
+            )
             pipe.config["target_language"] = "hi"
             job = pipe.prepare(video, runs)
             if read_json(job / "job.json").get("no_speech"):
@@ -129,8 +133,14 @@ def build_app(config="configs/local.json", runs="runs", resident_pool=None):
                 False,
             )
 
-    def render(job, rows, consent, approved, mode, progress=gr.Progress()):
-        yield gr.skip(), gr.skip(), gr.skip(), "**Checking every speech slot before lip generation.** Long speech gets up to two faster-delivery retries with unchanged words, followed by a supported Hindi grammar contraction if needed (logged as AI-revised). Any previous successful result remains available below.", {}
+    def render(job, rows, consent, approved, mode, enhance_mouth=False, progress=gr.Progress()):
+        yield (
+            gr.skip(),
+            gr.skip(),
+            gr.skip(),
+            "**Checking every speech slot before lip generation.** Long speech gets up to two faster-delivery retries with unchanged words, followed by a supported Hindi grammar contraction if needed (logged as AI-revised). Any previous successful result remains available below.",
+            {},
+        )
         try:
             if not consent:
                 raise ValueError("Confirm permission to edit and dub this video.")
@@ -149,11 +159,31 @@ def build_app(config="configs/local.json", runs="runs", resident_pool=None):
             )
             review = folder / "ui_review.json"
             write_json(review, segments)
-            pipe = Pipeline(config, resident_pool=resident_pool, progress=lambda value, message: progress(value, desc=message))
+            pipe = Pipeline(
+                config,
+                resident_pool=resident_pool,
+                progress=lambda value, message: progress(value, desc=message),
+            )
             pipe.config["overlap_tts"] = resident_pool is not None
             pipe.config["auto_compact_hindi"] = True
             pipe.config["rebalance_speech_timing"] = True
+            if enhance_mouth:
+                pipe.config["enhance_mouth"] = True
+                pipe.config["commands"]["enhance"] = [
+                    pipe.config["lipsync"]["python"],
+                    str(Path(__file__).resolve().parents[1] / "adapters/enhance_gfpgan.py"),
+                ]
             audio_only = mode == "Audio-only comparison"
+            if mode == "LatentSync comparison · much slower":
+                import sys
+
+                pipe.config["commands"]["lipsync"] = [
+                    sys.executable,
+                    str(Path(__file__).resolve().parents[1] / "adapters/lipsync_latentsync.py"),
+                ]
+                pipe.config["lipsync"] = {}
+                pipe.config["timeout_seconds"] = 7200
+                pipe.config["enhance_mouth"] = False
             output = pipe.render(folder, review, audio_only)
             result = read_json(folder / "job.json")
             # Resolve immutable artifact paths so a later rerender cannot change an existing download.
@@ -164,15 +194,29 @@ def build_app(config="configs/local.json", runs="runs", resident_pool=None):
                 f"**Complete · {'audio-only comparison' if audio_only else 'lip-synced Hindi'} · AI-dubbed.** "
                 f"{result['output_seconds']:.1f} s video · {result['render_seconds']:.1f} s render. "
                 "Watch and listen before sharing."
-                + (" AI shortened a Hindi phrase for timing; check the timing edits in Run details."
-                   if result.get("automatic_timing_edits") else "")
-                + (" Phrase boundaries shifted by at most one second to fit speech; see Run details."
-                   if result.get("timing_adjustments") else ""),
+                + (
+                    " AI shortened a Hindi phrase for timing; check the timing edits in Run details."
+                    if result.get("automatic_timing_edits")
+                    else ""
+                )
+                + (
+                    " Phrase boundaries shifted by at most one second to fit speech; see Run details."
+                    if result.get("timing_adjustments")
+                    else ""
+                ),
                 result,
             )
         except (ValueError, OSError, RuntimeError, KeyError) as exc:
             gr.Warning(str(exc))
-            yield gr.skip(), gr.skip(), gr.skip(), "**No new video was generated.** " + str(exc) + " Edit the indicated Hindi phrase and approve it again. Any previous successful result is still playable.", {}
+            yield (
+                gr.skip(),
+                gr.skip(),
+                gr.skip(),
+                "**No new video was generated.** "
+                + str(exc)
+                + " Edit the indicated Hindi phrase and approve it again. Any previous successful result is still playable.",
+                {},
+            )
 
     with gr.Blocks(
         title="Multilingua | Dubbing Studio", analytics_enabled=False, delete_cache=(3600, 86400)
@@ -196,14 +240,24 @@ def build_app(config="configs/local.json", runs="runs", resident_pool=None):
                 with gr.Row(equal_height=True):
                     with gr.Column():
                         gr.HTML('<div class="section-label">01 / ENGLISH SOURCE</div>')
-                        source = gr.Video(label="Original video", sources=["upload", "webcam"], format="mp4", height=280)
+                        source = gr.Video(
+                            label="Original video",
+                            sources=["upload", "webcam"],
+                            format="mp4",
+                            height=280,
+                        )
                         gr.Markdown(
                             "Start with a **10–20 second** clip: one consenting adult, a frontal face, "
                             "and clear English speech. Maximum 10 minutes / 200 MB."
                         )
                     with gr.Column():
                         gr.HTML('<div class="section-label">03 / HINDI OUTPUT · AI-DUBBED</div>')
-                        output = gr.Video(label="Dubbed video · available after successful generation", format="mp4", interactive=False, height=280)
+                        output = gr.Video(
+                            label="Dubbed video · available after successful generation",
+                            format="mp4",
+                            interactive=False,
+                            height=280,
+                        )
                         gr.Markdown(
                             "The player stays empty until generation succeeds. Webcam records a clip; it is not live dubbing. The generated voice may differ from the speaker. "
                             "Audio-only mode keeps the original mouth movements."
@@ -247,14 +301,23 @@ def build_app(config="configs/local.json", runs="runs", resident_pool=None):
                 )
                 with gr.Row():
                     mode = gr.Radio(
-                        ["Lip-synced Hindi", "Audio-only comparison"],
+                        [
+                            "Lip-synced Hindi",
+                            "LatentSync comparison · much slower",
+                            "Audio-only comparison",
+                        ],
                         value="Lip-synced Hindi",
                         label="Output mode",
-                        info="Audio-only is useful for checking pronunciation and timing first.",
+                        info="Lip-synced Hindi uses MuseTalk. LatentSync generates another lip result, takes much longer, and skips GFPGAN. Natural appearance is not guaranteed.",
                     )
                     render_button = gr.Button(
                         "Generate dubbed video →", variant="primary", interactive=False, size="lg"
                     )
+                enhance_mouth = gr.Checkbox(
+                    value=False,
+                    label="GFPGAN mouth enhancement · experimental, slower",
+                    info="OFF recommended for natural appearance. May invent teeth or alter lip shape; sharper does not mean more realistic. MuseTalk only; adds roughly 0.1 seconds per frame.",
+                )
                 with gr.Row():
                     captions = gr.File(label="Hindi subtitles · SRT", interactive=False, height=110)
                     bundle = gr.File(
@@ -269,23 +332,34 @@ def build_app(config="configs/local.json", runs="runs", resident_pool=None):
                         "Jobs and logs stay in your local runs folder until you delete them."
                     )
             with gr.Tab("Saved results"):
-                gr.Markdown("Completed videos stay here after refreshing. Select a result to compare the original and dub. AI-revised translations still need human review.")
+                gr.Markdown(
+                    "Completed videos stay here after refreshing. Select a result to compare the original and dub. AI-revised translations still need human review."
+                )
                 saved = gr.Dropdown(label="Completed job", choices=[], interactive=True)
                 refresh_saved = gr.Button("Refresh completed videos")
                 with gr.Row():
                     saved_source = gr.Video(label="Saved original", interactive=False, format="mp4")
-                    saved_output = gr.Video(label="Saved dubbed video", interactive=False, format="mp4")
+                    saved_output = gr.Video(
+                        label="Saved dubbed video", interactive=False, format="mp4"
+                    )
                 saved_bundle = gr.File(label="Download delivery ZIP", interactive=False)
 
                 def completed_jobs():
-                    jobs = sorted((p.parent for p in runs.glob("*/output.mp4")),
-                                  key=lambda p: (p / "output.mp4").stat().st_mtime, reverse=True)
+                    jobs = sorted(
+                        (p.parent for p in runs.glob("*/output.mp4")),
+                        key=lambda p: (p / "output.mp4").stat().st_mtime,
+                        reverse=True,
+                    )
                     choices = []
                     for folder in jobs[:30]:
-                        metadata = read_json(folder / "job.json") if (folder / "job.json").exists() else {}
+                        metadata = (
+                            read_json(folder / "job.json") if (folder / "job.json").exists() else {}
+                        )
                         mode = "Lip-synced" if metadata.get("lip_sync") else "Audio-only"
                         seconds = metadata.get("output_seconds", metadata.get("duration", 0))
-                        choices.append((f"{mode} · {seconds:.1f}s · {folder.name[:8]}", folder.name))
+                        choices.append(
+                            (f"{mode} · {seconds:.1f}s · {folder.name[:8]}", folder.name)
+                        )
                     return gr.update(choices=choices, value=None)
 
                 def show_saved(name):
@@ -294,9 +368,11 @@ def build_app(config="configs/local.json", runs="runs", resident_pool=None):
                     folder = (runs / name).resolve()
                     if folder.parent != runs or not (folder / "output.mp4").is_file():
                         raise gr.Error("Unknown completed job")
+
                     def artifact(filename):
                         p = folder / filename
                         return str(p.resolve()) if p.is_file() else None
+
                     return artifact("source.mp4"), artifact("output.mp4"), artifact("delivery.zip")
 
                 app.load(completed_jobs, [], [saved])
@@ -364,7 +440,7 @@ Uploads and outputs remain on disk. This studio is intended for one trusted loca
         )
         render_button.click(
             render,
-            [job, review, consent, approved, mode],
+            [job, review, consent, approved, mode, enhance_mouth],
             [output, captions, bundle, status, details],
             **shared,
         )
@@ -421,17 +497,21 @@ Uploads and outputs remain on disk. This studio is intended for one trusted loca
 
 
 def launch(config, runs="runs", port=7860):
-    import gradio as gr
     import atexit
     import signal
+
+    import gradio as gr
+
     from .resident import ResidentPool
 
     pool = ResidentPool(Path(runs) / "studio-worker-logs")
     atexit.register(pool.close)
+
     def shutdown_studio(signum, frame):
         # SIGTERM otherwise bypasses atexit and leaves GPU workers running.
         pool.close()
         raise SystemExit(0)
+
     signal.signal(signal.SIGTERM, shutdown_studio)
     app = build_app(config, runs, resident_pool=pool)
     theme = gr.themes.Soft(

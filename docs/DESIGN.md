@@ -40,7 +40,7 @@ In scope: one consenting adult with a frontal face, English speech, Hindi output
 
 Out of scope: webcam calls, real-time communication, overlapping/multiple speakers, diarization, arbitrary language choice, automatic speaker verification, face tracking across scene cuts, background music preservation, production hosting, authentication, training, and automatic proof of consent.
 
-Boundary behavior: no source audio, invalid segments or absent weights stop the job with a diagnostic. If Hindi speech exceeds the allowed duration ratio, the reviewer must shorten it. Lip failure stops rendering; audio-only must be explicitly selected. Silence intervals retain source video and receive silence. The studio asks for another clip when no speech is detected. The experimental service and replay can return normalized original video with no-speech metadata. Fixed-window replay can split phrases; it is an experiment, not a live demo feature.
+Boundary behavior: no source audio, invalid segments or absent weights stop the job with a diagnostic. If Hindi speech exceeds the allowed duration ratio, the studio can slow the affected video section. Fixed timing requires a shorter translation. Lip failure stops rendering; audio-only must be explicitly selected. Silence intervals retain source video and receive silence. The studio asks for another clip when no speech is detected. The experimental service and replay can return normalized original video with no-speech metadata. Fixed-window replay can split phrases; it is an experiment, not a live demo feature.
 
 ## 4. Testable requirements
 
@@ -49,7 +49,7 @@ Boundary behavior: no source audio, invalid segments or absent weights stop the 
 | F1 | Reject missing video/audio and clips over 600 s; normalize to 25 FPS | FFmpeg integration tests + input probes |
 | F2 | Produce 1–500 ordered, finite, nonoverlapping ASR phrases; one nonempty Hindi translation per phrase | Contract and timeline tests |
 | F3 | UI requires permission before processing, and explicit review before rendering; only Hindi text is editable | Browser smoke + tampering tests |
-| F4 | Pad short speech, accelerate at most 1.25×, reject longer speech without truncation | Audio-fit integration tests |
+| F4 | Pad short speech and accelerate at most 1.25×. Extend affected video sections with flexible timing or flag the review row with fixed timing | Audio-fit integration tests |
 | F5 | Align media on absolute 25 FPS boundaries and preserve silent intervals | Timeline and FFmpeg tests |
 | F6 | Produce requested mode or fail visibly; never silently switch to original lips | Positive pipeline path + deliberate failing lip-adapter tests |
 | F7 | Export MP4, UTF-8 SRT, reviewed text, timing, hashes, AI disclosure and ZIP | Integration + browser download tests |
@@ -59,7 +59,7 @@ Boundary behavior: no source audio, invalid segments or absent weights stop the 
 | ID | Non-functional target | Measurement / status |
 |---|---|---|
 | N1 Latency | UI navigation <2 s after assets load; **target** ≤10 minutes total compute for a 20 s demo clip on target hardware, excluding human review/downloads | Browser usability checked; neural compute target unmeasured here. Report cold load separately. |
-| N2 Timing | Final container duration differs from normalized source by ≤120 ms | Enforced by renderer, tested synthetically; per-stage timestamps included |
+| N2 Timing | Final container matches the planned output timeline within 120 ms | Enforced by renderer, tested synthetically; per-stage timestamps included |
 | N3 Freshness | Use the exact current source and reviewed text; regenerate derived speech on every attempt | No inference-result cache; output hashes and immutable render directories |
 | N4 Privacy | Localhost binding; no public share; UI upload ≤200 MB; no credentials committed | UI options, ignore rules, manual configuration review. Local adapters are trusted code. |
 | N5 Retention | Gradio temporary cache eligible for cleanup after 24 h; project jobs kept until operator deletes them | Documented behavior. Delete private job directories and local browser downloads after assessment. |
@@ -98,7 +98,7 @@ The UI serializes model events across users of this local app; CLI callers must 
 
 State flow: `preparing → awaiting_review → rendering → complete`, with explicit `failed` states. Review validation happens before neural rendering. Each render gets a fresh `renders/<id>/` folder. After all outputs and the ZIP are ready, `current` switches atomically; stable output aliases resolve through it. Failed attempts keep their logs. `published_render` identifies the last successful bundle even if a later attempt fails. The job-state JSON is an operational record; `current` is the authoritative publication pointer after a process interruption.
 
-Source timestamps are quantized once to absolute frame boundaries, avoiding accumulated rounding across cuts. Raw speech duration divided by the slot determines speed. Lips consume the fitted WAV, not the original TTS WAV. The bundle preserves the requested review times and the effective frame-aligned times. Subtitles follow the effective times. The experimental service can widen time slots only into adjacent silence.
+Source timestamps are quantized once to absolute frame boundaries, avoiding accumulated rounding across cuts. Raw speech duration divided by the slot determines speed. With flexible timing, overlong phrases extend to the next frame boundary that fits the speech within the speed cap. Lip synthesis uses the fitted WAV and retimed video. The bundle preserves the review times, and alignment records the corresponding output times. Subtitles follow the output timeline. The experimental service can widen time slots into adjacent silence.
 
 ### Experimental capture service
 

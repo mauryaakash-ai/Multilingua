@@ -144,7 +144,7 @@ def build_app(config="configs/local.json", runs="runs"):
                 False,
             )
 
-    def render(job, rows, consent, approved, mode, progress=gr.Progress()):
+    def render(job, rows, consent, approved, mode, extend_video, progress=gr.Progress()):
         yield None, None, None, "**Checking review and preparing speech…**", {}
         try:
             if not consent:
@@ -167,8 +167,10 @@ def build_app(config="configs/local.json", runs="runs"):
             review = folder / "ui_review.json"
             write_json(review, segments)
             pipe = Pipeline(config, progress=lambda value, message: progress(value, desc=message))
-            output = pipe.render(folder, review, audio_only)
+            output = pipe.render(folder, review, audio_only, extend_video=extend_video)
             result = read_json(folder / "job.json")
+            added = result["added_seconds"]
+            timing_note = f" Added {added:.2f} s to fit the reviewed Hindi." if added > 0 else ""
             # Resolve immutable artifact paths so a later rerender cannot change an existing download.
             yield (
                 str(output.resolve()),
@@ -176,7 +178,7 @@ def build_app(config="configs/local.json", runs="runs"):
                 str((folder / "delivery.zip").resolve()),
                 f"**Complete · {'audio-only comparison' if audio_only else 'lip-synced Hindi'} · AI-dubbed.** "
                 f"{result['output_seconds']:.1f} s video · {result['render_seconds']:.1f} s render. "
-                "Watch and listen before sharing.",
+                f"Watch and listen before sharing.{timing_note}",
                 result,
             )
         except (ValueError, OSError, RuntimeError, KeyError) as exc:
@@ -256,6 +258,11 @@ def build_app(config="configs/local.json", runs="runs"):
                 approved = gr.Checkbox(
                     label="I checked the Hindi translation for meaning, names and numbers."
                 )
+                extend_video = gr.Checkbox(
+                    value=True,
+                    label="Allow a longer video to fit the Hindi speech",
+                    info="When a phrase exceeds its slot, slow that video section and shift later subtitles.",
+                )
                 with gr.Row():
                     mode = gr.Radio(
                         ["Lip-synced Hindi", "Audio-only comparison"],
@@ -289,7 +296,7 @@ def build_app(config="configs/local.json", runs="runs"):
 1. **Recognize.** Whisper converts English audio into timestamped phrases.
 2. **Translate.** IndicTrans2 produces Hindi text. You correct meaning before speech is generated.
 3. **Speak.** Indic Parler-TTS generates a generic Hindi voice; an optional IndicF5 adapter uses a permitted reference voice.
-4. **Fit.** Short speech is padded with silence. Speech up to 25% too long is gently accelerated. Longer speech stops for a shorter translation.
+4. **Fit.** Short speech is padded with silence. Speech can play up to 1.25× its original speed. With longer output enabled, the studio slows video sections that need more time.
 5. **Synchronize.** MuseTalk edits mouth regions using the fitted speech. Audio-only mode skips this step explicitly.
 6. **Export.** Download video, Hindi subtitles, timing measurements and an AI-dubbed disclosure together.
 
@@ -343,7 +350,7 @@ Uploads and outputs remain on disk. This studio is intended for one trusted loca
         )
         render_button.click(
             render,
-            [job, review, consent, approved, mode],
+            [job, review, consent, approved, mode, extend_video],
             [output, captions, bundle, status, details],
             **shared,
         )

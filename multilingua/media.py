@@ -100,10 +100,13 @@ class SpeechTooLong(ValueError):
     """Synthesized speech cannot fit within the configured speed limit."""
 
 
-def fit_audio(src, dst, seconds, max_speed=1.25):
+def fit_audio(src, dst, seconds, max_speed=1.25, *, extend_slot=False):
     if not math.isfinite(seconds) or seconds <= 0 or not 1 <= max_speed <= 1.25:
         raise ValueError("Use a positive finite slot and a speech speed cap between 1 and 1.25")
     actual = duration(src)
+    if extend_slot and actual > seconds * max_speed:
+        # MuseTalk consumes video at 25 fps. Round up to keep all the audio.
+        seconds = math.ceil(actual * 25 / max_speed) / 25
     ratio = actual / seconds
     if ratio > max_speed + 0.001:
         raise SpeechTooLong(
@@ -125,6 +128,27 @@ def fit_audio(src, dst, seconds, max_speed=1.25):
         dst,
     )
     return {"raw_seconds": actual, "slot_seconds": seconds, "speed": speed}
+
+
+def slow_video(src, dst, original_seconds, output_seconds):
+    """Stretch the frames of a normalized clip to an exact longer interval."""
+    ratio = output_seconds / original_seconds
+    ffmpeg(
+        "-i",
+        src,
+        "-vf",
+        f"setpts={ratio:.12f}*(PTS-STARTPTS),fps=25,tpad=stop_mode=clone:stop=-1",
+        "-frames:v",
+        str(round(output_seconds * 25)),
+        "-an",
+        "-c:v",
+        "libx264",
+        "-crf",
+        "18",
+        "-pix_fmt",
+        "yuv420p",
+        dst,
+    )
 
 
 def silence(dst, seconds):

@@ -47,7 +47,7 @@ def main():
             video,
         )
         adapter = root / "test_adapter.py"
-        adapter.write_text(FAKE)
+        adapter.write_text(FAKE.replace("duration=0.8", "duration=1.4"))
         config = root / "config.json"
         config.write_text(
             json.dumps(
@@ -134,8 +134,15 @@ def main():
                         "Confirm that you checked", timeout=15000
                     )
                     page.get_by_role("checkbox", name="I checked the Hindi").check()
+                    flexible = page.get_by_role("checkbox", name="Allow a longer video")
+                    expect(flexible).to_be_checked()
+                    flexible.uncheck()
+                    page.get_by_role("button", name="Generate dubbed video").click()
+                    expect(page.locator("#status")).to_contain_text("Review row 1", timeout=45000)
+                    flexible.check()
                     page.get_by_role("button", name="Generate dubbed video").click()
                     expect(page.locator("#status")).to_contain_text("Complete", timeout=45000)
+                    expect(page.locator("#status")).to_contain_text("Added 0.12 s")
                     expect(page.locator('a[href$="/delivery.zip"]')).to_be_visible()
                     with page.expect_download() as download:
                         page.locator('a[href$="/delivery.zip"]').click()

@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 from multilingua import media
-from multilingua.pipeline import Pipeline, read_json
+from multilingua.pipeline import Pipeline, read_json, write_json
 
 FAKE = r"""
 import argparse,json,subprocess
@@ -141,6 +141,40 @@ class MediaIntegration(unittest.TestCase):
         result = media.fit_audio(src, self.root / "fit.wav", 1)
         self.assertAlmostEqual(result["speed"], 1.2, places=2)
         self.assertAlmostEqual(media.duration(self.root / "fit.wav"), 1, delta=0.02)
+
+    def test_flexible_timing_extends_both_modes_and_shifts_subtitles(self):
+        adapter = self.root / "fake.py"
+        adapter.write_text(
+            FAKE.replace("duration=0.8", "duration=1.4").replace(
+                "else: raise RuntimeError('Deliberate failing lip adapter')",
+                "else:\n    import shutil\n    shutil.copyfile(r['video'], r['output'])\n"
+                "    out={'video':r['output']}",
+            )
+        )
+        job = self.pipe.prepare(self.video, self.root / "runs")
+        review = job / "review.json"
+        write_json(
+            review,
+            [
+                {"start": 0.0, "end": 0.8, "text": "Hello", "translation": "नमस्ते"},
+                {"start": 0.8, "end": 2.0, "text": "Thanks", "translation": "धन्यवाद"},
+            ],
+        )
+        for audio_only in (True, False):
+            with self.subTest(audio_only=audio_only):
+                output = self.pipe.render(job, review, audio_only, extend_video=True)
+                state = read_json(job / "job.json")
+                self.assertAlmostEqual(state["added_seconds"], 0.32)
+                self.assertEqual(state["lip_sync"], not audio_only)
+                self.assertAlmostEqual(media.video_duration(output), 2.32, delta=0.04)
+                self.assertEqual(read_json(job / "requested_segments.json"), read_json(review))
+                self.assertIn("00:00:01,120 --> 00:00:02,320", (job / "subtitles.srt").read_text())
+                alignment = read_json(job / "alignment.json")
+                self.assertLessEqual(alignment[0]["speed"], 1.25)
+                self.assertAlmostEqual(alignment[1]["output_start"], 1.12)
+                if not audio_only:
+                    payload = read_json(job / "current/segment_0000/lipsync_request.json")
+                    self.assertAlmostEqual(media.video_duration(payload["video"]), 1.12)
 
     def test_lock_prevents_concurrent_render(self):
         job = self.pipe.prepare(self.video, self.root / "runs")

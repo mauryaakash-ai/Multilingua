@@ -36,7 +36,7 @@ class ResidentPipelineTests(unittest.TestCase):
 
             pipe = Fake(config, resident_pool=object())
 
-            def fit(src, dst, seconds, *args):
+            def fit(src, dst, seconds, max_speed, *, extend_slot=False):
                 Path(dst).write_bytes(b"audio")
                 return {"raw_seconds": seconds, "slot_seconds": seconds, "speed": 1}
 

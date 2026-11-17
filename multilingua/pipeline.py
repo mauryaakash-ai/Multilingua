@@ -179,7 +179,7 @@ class Pipeline:
             write_json(job / "job.json", state)
         return job
 
-    def render(self, job, review=None, audio_only=False):
+    def render(self, job, review=None, audio_only=False, *, extend_video=False):
         job = Path(job).resolve()
         lock = job / ".render.lock"
         fd = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
@@ -225,7 +225,8 @@ class Pipeline:
             state.update(status="rendering", active_render=str(attempt.relative_to(job)))
             state.pop("error", None)
             write_json(job / "job.json", state)
-            parts, alignment = [], []
+            parts, alignment, output_segments = [], [], []
+            added_seconds = 0.0
 
             def synthesize(index):
                 row = timeline[index]
@@ -263,6 +264,7 @@ class Pipeline:
                 work.mkdir(exist_ok=True)
                 seconds = segment["end"] - segment["start"]
                 media.cut(job / "source.mp4", work / "video.mp4", segment["start"], seconds)
+                visual = work / "video.mp4"
                 speech = bool(segment.get("translation", "").strip())
                 if speech:
                     phrase_number += 1
@@ -275,17 +277,29 @@ class Pipeline:
                             work / "audio.wav",
                             seconds,
                             self.config.get("max_speech_speed", 1.25),
+                            extend_slot=extend_video,
                         )
                     except media.SpeechTooLong as exc:
                         raise media.SpeechTooLong(
                             f"Review row {phrase_number} "
                             f"({segment['start']:.2f}–{segment['end']:.2f}s). {exc}"
                         ) from exc
+                    output_start = segment["start"] + added_seconds
+                    slot_seconds = fitted["slot_seconds"]
+                    if slot_seconds > seconds:
+                        visual = work / "retimed.mp4"
+                        media.slow_video(work / "video.mp4", visual, seconds, slot_seconds)
+                        added_seconds += slot_seconds - seconds
+                        seconds = slot_seconds
+                    output_end = output_start + seconds
+                    output_segments.append({**segment, "start": output_start, "end": output_end})
                     alignment.append(
                         {
                             "segment": i,
                             "start": segment["start"],
                             "end": segment["end"],
+                            "output_start": output_start,
+                            "output_end": output_end,
                             **fitted,
                             "tts_seconds": elapsed,
                         }
@@ -296,7 +310,7 @@ class Pipeline:
                             work,
                             {
                                 **self.config.get("lipsync", {}),
-                                "video": str(work / "video.mp4"),
+                                "video": str(visual),
                                 "audio": str(work / "audio.wav"),
                                 "output": str(work / "lips.mp4"),
                             },
@@ -305,10 +319,10 @@ class Pipeline:
                             raise RuntimeError("Lip model returned without creating a video")
                         if abs(media.video_duration(work / "lips.mp4") - seconds) > 0.1:
                             raise RuntimeError("Lip video duration differs from the scheduled slot")
+                        visual = work / "lips.mp4"
                         alignment[-1]["lipsync_seconds"] = elapsed
                 else:
                     media.silence(work / "audio.wav", seconds)
-                visual = work / ("lips.mp4" if speech and not audio_only else "video.mp4")
                 part = attempt / f"part_{i:04d}.mp4"
                 media.mux(visual, work / "audio.wav", part, seconds)
                 parts.append(part)
@@ -320,9 +334,9 @@ class Pipeline:
             else:
                 media.concatenate(parts, attempt / "output.mp4")
             measured = media.duration(attempt / "output.mp4")
-            if abs(measured - state["duration"]) > 0.12:
+            if abs(measured - (state["duration"] + added_seconds)) > 0.12:
                 raise RuntimeError("Output duration drift exceeds 120 ms")
-            (attempt / "subtitles.srt").write_text(subtitles(segments), encoding="utf-8")
+            (attempt / "subtitles.srt").write_text(subtitles(output_segments), encoding="utf-8")
             write_json(attempt / "alignment.json", alignment)
             elapsed = time.monotonic() - started
             report = {
@@ -331,6 +345,7 @@ class Pipeline:
                 "lip_sync": not audio_only and not silent,
                 "source_seconds": state["duration"],
                 "output_seconds": measured,
+                "added_seconds": added_seconds,
                 "render_seconds": elapsed,
                 "render_rtf": elapsed / state["duration"],
                 "python": platform.python_version(),
@@ -376,6 +391,7 @@ class Pipeline:
                 lip_sync=not audio_only and not silent,
                 published_render=str(attempt.relative_to(job)),
                 output_seconds=measured,
+                added_seconds=added_seconds,
                 render_seconds=elapsed,
                 render_rtf=elapsed / state["duration"],
             )

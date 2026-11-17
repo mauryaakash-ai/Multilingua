@@ -80,6 +80,8 @@ Doctor exits 1 for missing required dependencies/configuration and 0 when local 
 
 Upload → confirm permission → transcribe/translate → edit Hindi → confirm review → select mode → generate → watch/listen → download. Source text/timing are locked in the browser and validated server-side. Changing the source clears previous results and permission/review checks. Editing Hindi resets review approval. Progress describes the actual active stage, not estimated completion time.
 
+**Allow a longer video to fit the Hindi speech** is on by default in the studio and applies to both modes. When a phrase would need more than 1.25× speed to fit, the studio slows that section of video and shifts later subtitles. Turn it off if the output must match the original duration, then shorten any Hindi row flagged by the renderer.
+
 If ASR itself is incorrect, use the CLI to correct source/segment definitions and re-run translation via the adapter contract before rendering; the simple UI is intentionally focused on translation review. See `adapters/PROTOCOL.md`.
 
 ## 5. CLI workflow and outputs
@@ -90,6 +92,8 @@ python -m multilingua.cli --config configs/local.json prepare /absolute/input.mp
 python -m multilingua.cli --config configs/local.json render runs/JOB_ID --audio-only
 python -m multilingua.cli --config configs/local.json render runs/JOB_ID
 ```
+
+Add `--extend-video` to either render command to allow the same flexible timing as the studio.
 
 Each success remains in `runs/JOB_ID/renders/RENDER_ID/`. `current` is an atomic symlink to the latest success. Top-level `output.mp4`, `subtitles.srt`, `reviewed_segments.json`, `alignment.json`, `provenance.json`, `AI-DUBBED.txt` and `delivery.zip` resolve through it. Keep separate render directories for comparisons. A later failed render retains the previous successful bundle. The UI returns immutable paths for its downloads.
 
@@ -104,7 +108,7 @@ The archive is marked AI-dubbed and includes text/timing evidence. Its disclosur
 | Config/executable missing | Use the system-check details; replace example paths with `which python` from the appropriate environment |
 | HTTP 401/403 / gated download | Accept model terms and authenticate in that environment; do not bypass access checks |
 | Translation overflow | Split a long source phrase using valid timestamps, or reduce translation length after meaning review |
-| Speech too long for slot | Shorten Hindi, preserving meaning; do not raise the 1.25× cap |
+| Speech too long for slot | Enable **Allow a longer video** or shorten the flagged Hindi row to keep the original duration |
 | No face / lip frame mismatch | Use a frontal clip with no cuts/occlusion and inspect the named lip log |
 | CUDA OOM | Keep ASR/MT on CPU, reduce MuseTalk batch size, close other GPU processes, shorten clip |
 | Adapter timeout | Inspect its log; timeout terminates the process group on Linux. Fix setup or shorten input before retrying |

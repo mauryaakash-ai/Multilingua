@@ -19,6 +19,11 @@ def run_cli():
     render.add_argument("job")
     render.add_argument("--review")
     render.add_argument("--audio-only", action="store_true", help="Explicitly skip lip editing")
+    render.add_argument(
+        "--extend-video",
+        action="store_true",
+        help="Slow affected video sections to fit long speech",
+    )
     replay = sub.add_parser("replay")
     replay.add_argument("video")
     replay.add_argument("--runs", default="runs")
@@ -56,7 +61,7 @@ def run_cli():
     if args.action == "prepare":
         print(pipe.prepare(args.video, args.runs))
     elif args.action == "render":
-        print(pipe.render(args.job, args.review, args.audio_only))
+        print(pipe.render(args.job, args.review, args.audio_only, extend_video=args.extend_video))
 
 
 def main():

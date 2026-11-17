@@ -63,7 +63,7 @@ elif a.stage == "tts":
 
         cached_factory(ParlerTTSForConditionalGeneration, "from_pretrained")
 elif a.stage == "lipsync":
-    os.chdir("/home/akash/MuseTalk")
+    os.chdir(os.environ["MULTILINGUA_MUSETALK_REPO"])
     sys.path.insert(0, os.getcwd())
     import musetalk.utils.face_parsing as parsing
     import musetalk.utils.utils as muse_utils
@@ -89,9 +89,13 @@ original_run = subprocess.run
 
 
 def resident_run(command, *args, **kwargs):
-    if a.stage == "lipsync" and (
-        command[1:3] == ["-m", "scripts.inference"]
-        or str(command[1]).endswith("musetalk_quality_runner.py")
+    if (
+        a.stage == "lipsync"
+        and len(command) > 1
+        and (
+            command[1:3] == ["-m", "scripts.inference"]
+            or str(command[1]).endswith("musetalk_quality_runner.py")
+        )
     ):
         previous = sys.argv
         cwd = os.getcwd()

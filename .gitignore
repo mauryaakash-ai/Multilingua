@@ -23,3 +23,6 @@ dist/
 build/
 .ruff_cache/
 artifacts/
+private/
+playwright-report/
+test-results/

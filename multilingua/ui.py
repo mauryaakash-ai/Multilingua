@@ -1,4 +1,5 @@
 """Local, single-user dubbing studio. Model work is serialized across UI events."""
+
 from pathlib import Path
 
 from .config import diagnose
@@ -37,32 +38,37 @@ body {background: #f5f7fa;}
 
 
 def review_rows(segments):
-    return [[i + 1, s['start'], s['end'], s['text'], s['translation']]
-            for i, s in enumerate(segments)]
+    return [
+        [i + 1, s["start"], s["end"], s["text"], s["translation"]] for i, s in enumerate(segments)
+    ]
 
 
 def reviewed_segments(rows, original, duration):
     """The browser cannot change source text, row identity or timing."""
     if not isinstance(rows, list) or len(rows) != len(original):
-        raise ValueError('Keep every original row; edit only the Hindi translation column.')
+        raise ValueError("Keep every original row; edit only the Hindi translation column.")
     result = []
     for index, (row, segment) in enumerate(zip(rows, original)):
-        expected = [index + 1, segment['start'], segment['end'], segment['text']]
+        expected = [index + 1, segment["start"], segment["end"], segment["text"]]
         if not isinstance(row, list) or len(row) != 5 or row[:4] != expected:
-            raise ValueError(f'Row {index + 1}: edit only the Hindi translation; source and timing are locked.')
-        result.append({**segment, 'translation': row[4]})
+            raise ValueError(
+                f"Row {index + 1}: edit only the Hindi translation; source and timing are locked."
+            )
+        result.append({**segment, "translation": row[4]})
     return validate_segments(result, duration, translated=True)
 
 
 def readiness_markdown(report):
-    required = [c for c in report['checks'] if c['required'] and not c['ok']]
+    required = [c for c in report["checks"] if c["required"] and not c["ok"]]
     if required:
-        return (f'**Setup needed · {len(required)} checks to resolve.** '
-                'You can explore the studio. Open **System check** before running model inference.')
-    return '**Local paths checked.** Run a short real clip to verify model access and quality.'
+        return (
+            f"**Setup needed · {len(required)} checks to resolve.** "
+            "You can explore the studio. Open **System check** before running model inference."
+        )
+    return "**Local paths checked.** Run a short real clip to verify model access and quality."
 
 
-def build_app(config='configs/local.json', runs='runs'):
+def build_app(config="configs/local.json", runs="runs"):
     import gradio as gr
 
     runs = Path(runs).resolve()
@@ -70,109 +76,188 @@ def build_app(config='configs/local.json', runs='runs'):
 
     def prepare(video, consent, progress=gr.Progress()):
         # Clear earlier job/output before any operation that might fail.
-        yield '', [], None, None, None, '**Preparing your video…**', gr.update(interactive=False), {}, False
+        yield (
+            "",
+            [],
+            None,
+            None,
+            None,
+            "**Preparing your video…**",
+            gr.update(interactive=False),
+            {},
+            False,
+        )
         try:
             if not video:
-                raise ValueError('Upload an English video first.')
+                raise ValueError("Upload an English video first.")
             if not consent:
-                raise ValueError('Confirm permission to process and dub the video before continuing.')
+                raise ValueError(
+                    "Confirm permission to process and dub the video before continuing."
+                )
             pipe = Pipeline(config, lambda value, message: progress(value, desc=message))
             job = pipe.prepare(video, runs)
-            segments = read_json(job / 'segments.json')
-            state = read_json(job / 'job.json')
-            yield (str(job), review_rows(segments), None, None, None,
-                   f"**Ready for review · {len(segments)} phrases · {state['duration']:.1f} s.** "
-                   'Check Hindi meaning, names and numbers, then confirm your review below.',
-                   gr.update(interactive=True), state, False)
+            segments = read_json(job / "segments.json")
+            state = read_json(job / "job.json")
+            yield (
+                str(job),
+                review_rows(segments),
+                None,
+                None,
+                None,
+                f"**Ready for review · {len(segments)} phrases · {state['duration']:.1f} s.** "
+                "Check Hindi meaning, names and numbers, then confirm your review below.",
+                gr.update(interactive=True),
+                state,
+                False,
+            )
         except (ValueError, OSError, RuntimeError, KeyError) as exc:
             gr.Warning(str(exc))
-            yield '', [], None, None, None, '**Preparation stopped.** ' + str(exc), gr.update(interactive=False), {}, False
+            yield (
+                "",
+                [],
+                None,
+                None,
+                None,
+                "**Preparation stopped.** " + str(exc),
+                gr.update(interactive=False),
+                {},
+                False,
+            )
 
     def render(job, rows, consent, approved, mode, progress=gr.Progress()):
-        yield None, None, None, '**Checking review and preparing speech…**', {}
+        yield None, None, None, "**Checking review and preparing speech…**", {}
         try:
             if not consent:
-                raise ValueError('Confirm permission to edit and dub this video.')
+                raise ValueError("Confirm permission to edit and dub this video.")
             if not job:
-                raise ValueError('Prepare a video first.')
+                raise ValueError("Prepare a video first.")
             if not approved:
-                raise ValueError('Confirm that you checked the Hindi translation before generating.')
+                raise ValueError(
+                    "Confirm that you checked the Hindi translation before generating."
+                )
             folder = Path(job).resolve()
             if folder.parent != runs:
-                raise ValueError('This job does not belong to the current studio.')
-            state = read_json(folder / 'job.json')
-            segments = reviewed_segments(rows, read_json(folder / 'segments.json'), state['duration'])
-            review = folder / 'ui_review.json'
+                raise ValueError("This job does not belong to the current studio.")
+            state = read_json(folder / "job.json")
+            segments = reviewed_segments(
+                rows, read_json(folder / "segments.json"), state["duration"]
+            )
+            review = folder / "ui_review.json"
             write_json(review, segments)
             pipe = Pipeline(config, lambda value, message: progress(value, desc=message))
-            audio_only = mode == 'Audio-only comparison'
+            audio_only = mode == "Audio-only comparison"
             output = pipe.render(folder, review, audio_only)
-            result = read_json(folder / 'job.json')
+            result = read_json(folder / "job.json")
             # Resolve immutable artifact paths so a later rerender cannot change an existing download.
-            yield (str(output.resolve()), str((folder / 'subtitles.srt').resolve()),
-                   str((folder / 'delivery.zip').resolve()),
-                   f"**Complete · {'audio-only comparison' if audio_only else 'lip-synced Hindi'} · AI-dubbed.** "
-                   f"{result['output_seconds']:.1f} s video · {result['render_seconds']:.1f} s render. "
-                   'Watch and listen before sharing.', result)
+            yield (
+                str(output.resolve()),
+                str((folder / "subtitles.srt").resolve()),
+                str((folder / "delivery.zip").resolve()),
+                f"**Complete · {'audio-only comparison' if audio_only else 'lip-synced Hindi'} · AI-dubbed.** "
+                f"{result['output_seconds']:.1f} s video · {result['render_seconds']:.1f} s render. "
+                "Watch and listen before sharing.",
+                result,
+            )
         except (ValueError, OSError, RuntimeError, KeyError) as exc:
             gr.Warning(str(exc))
-            yield None, None, None, '**Render stopped.** ' + str(exc), {}
+            yield None, None, None, "**Render stopped.** " + str(exc), {}
 
-    with gr.Blocks(title='Multilingua | Dubbing Studio', analytics_enabled=False,
-                   delete_cache=(3600, 86400)) as app:
-        gr.HTML('''<header id="masthead">
+    with gr.Blocks(
+        title="Multilingua | Dubbing Studio", analytics_enabled=False, delete_cache=(3600, 86400)
+    ) as app:
+        gr.HTML("""<header id="masthead">
           <div class="eyebrow">MULTILINGUA / DUBBING STUDIO</div>
           <h1>Your ideas. A new language.</h1>
           <p>Turn English video into Hindi speech. Review every phrase,
           keep the timing, and bring the words to life with lip synchronization.</p>
           <div class="pills"><span class="pill">English → हिन्दी</span>
           <span class="pill">Human-reviewed translation</span>
-          <span class="pill">Local processing</span></div></header>''')
+          <span class="pill">Local processing</span></div></header>""")
         with gr.Tabs():
-            with gr.Tab('Studio'):
-                gr.HTML('''<div class="flow">
+            with gr.Tab("Studio"):
+                gr.HTML("""<div class="flow">
                   <div class="flow-item"><span class="step">1</span><div><b>Bring your video</b><small>Clear audio. One visible speaker.</small></div></div>
                   <div class="flow-item"><span class="step">2</span><div><b>Make the meaning right</b><small>Review and refine the Hindi.</small></div></div>
-                  <div class="flow-item"><span class="step">3</span><div><b>Give it a new voice</b><small>Generate, compare and export.</small></div></div></div>''')
-                setup_note = gr.Markdown(readiness_markdown(report), elem_id='setup-note')
-                job = gr.State('')
+                  <div class="flow-item"><span class="step">3</span><div><b>Give it a new voice</b><small>Generate, compare and export.</small></div></div></div>""")
+                setup_note = gr.Markdown(readiness_markdown(report), elem_id="setup-note")
+                job = gr.State("")
                 with gr.Row(equal_height=True):
                     with gr.Column():
                         gr.HTML('<div class="section-label">01 / ENGLISH SOURCE</div>')
-                        source = gr.Video(label='Original video', sources=['upload'], height=280)
-                        gr.Markdown('Start with a **10–20 second** clip: one consenting adult, a frontal face, '
-                                    'and clear English speech. Maximum 10 minutes / 200 MB.')
+                        source = gr.Video(label="Original video", sources=["upload"], height=280)
+                        gr.Markdown(
+                            "Start with a **10–20 second** clip: one consenting adult, a frontal face, "
+                            "and clear English speech. Maximum 10 minutes / 200 MB."
+                        )
                     with gr.Column():
                         gr.HTML('<div class="section-label">03 / HINDI OUTPUT · AI-DUBBED</div>')
-                        output = gr.Video(label='Dubbed video', interactive=False, height=280)
-                        gr.Markdown('The generated voice may differ from the speaker. '
-                                    'Audio-only mode keeps the original mouth movements.')
-                consent = gr.Checkbox(label='I have permission to process this video, edit the speaker’s likeness, and use any reference voice.')
-                prep = gr.Button('Transcribe & translate →', variant='primary', size='lg')
-                status = gr.Markdown('**Start here.** Upload a video and confirm permission to begin.', elem_id='status')
+                        output = gr.Video(label="Dubbed video", interactive=False, height=280)
+                        gr.Markdown(
+                            "The generated voice may differ from the speaker. "
+                            "Audio-only mode keeps the original mouth movements."
+                        )
+                consent = gr.Checkbox(
+                    label="I have permission to process this video, edit the speaker’s likeness, and use any reference voice."
+                )
+                prep = gr.Button("Transcribe & translate →", variant="primary", size="lg")
+                status = gr.Markdown(
+                    "**Start here.** Upload a video and confirm permission to begin.",
+                    elem_id="status",
+                )
                 gr.HTML('<div class="section-label">02 / REVIEW THE TRANSLATION</div>')
-                gr.Markdown('Edit the **Hindi translation** column. Keep names, numbers and meaning intact. '
-                            'Short, natural phrases are easier to fit to the original timing.')
-                review = gr.Dataframe(headers=['#', 'Start (s)', 'End (s)', 'English transcript', 'Hindi translation'],
-                                      datatype=['number', 'number', 'number', 'str', 'str'],
-                                      type='array', value=[], interactive=True, static_columns=[0, 1, 2, 3],
-                                      column_count=5, row_count=0,
-                                      wrap=True, max_height=360, column_widths=['6%', '10%', '10%', '37%', '37%'],
-                                      label='Phrase-by-phrase review', elem_id='review-table')
-                approved = gr.Checkbox(label='I checked the Hindi translation for meaning, names and numbers.')
+                gr.Markdown(
+                    "Edit the **Hindi translation** column. Keep names, numbers and meaning intact. "
+                    "Short, natural phrases are easier to fit to the original timing."
+                )
+                review = gr.Dataframe(
+                    headers=[
+                        "#",
+                        "Start (s)",
+                        "End (s)",
+                        "English transcript",
+                        "Hindi translation",
+                    ],
+                    datatype=["number", "number", "number", "str", "str"],
+                    type="array",
+                    value=[],
+                    interactive=True,
+                    static_columns=[0, 1, 2, 3],
+                    column_count=5,
+                    row_count=0,
+                    wrap=True,
+                    max_height=360,
+                    column_widths=["6%", "10%", "10%", "37%", "37%"],
+                    label="Phrase-by-phrase review",
+                    elem_id="review-table",
+                )
+                approved = gr.Checkbox(
+                    label="I checked the Hindi translation for meaning, names and numbers."
+                )
                 with gr.Row():
-                    mode = gr.Radio(['Lip-synced Hindi', 'Audio-only comparison'], value='Lip-synced Hindi',
-                                    label='Output mode', info='Audio-only is useful for checking pronunciation and timing first.')
-                    render_button = gr.Button('Generate dubbed video →', variant='primary', interactive=False, size='lg')
+                    mode = gr.Radio(
+                        ["Lip-synced Hindi", "Audio-only comparison"],
+                        value="Lip-synced Hindi",
+                        label="Output mode",
+                        info="Audio-only is useful for checking pronunciation and timing first.",
+                    )
+                    render_button = gr.Button(
+                        "Generate dubbed video →", variant="primary", interactive=False, size="lg"
+                    )
                 with gr.Row():
-                    captions = gr.File(label='Hindi subtitles · SRT', interactive=False, height=110)
-                    bundle = gr.File(label='Delivery · video, subtitles & review record', interactive=False, height=110)
-                with gr.Accordion('Run details', open=False):
-                    details = gr.JSON(label='Measured timings and job status')
-                    gr.Markdown('Render time includes model loading. It is not live streaming latency. '
-                                'Jobs and logs stay in your local runs folder until you delete them.')
-            with gr.Tab('How it works'):
-                gr.Markdown('''## From a spoken idea to a reviewed dub
+                    captions = gr.File(label="Hindi subtitles · SRT", interactive=False, height=110)
+                    bundle = gr.File(
+                        label="Delivery · video, subtitles & review record",
+                        interactive=False,
+                        height=110,
+                    )
+                with gr.Accordion("Run details", open=False):
+                    details = gr.JSON(label="Measured timings and job status")
+                    gr.Markdown(
+                        "Render time includes model loading. It is not live streaming latency. "
+                        "Jobs and logs stay in your local runs folder until you delete them."
+                    )
+            with gr.Tab("How it works"):
+                gr.Markdown("""## From a spoken idea to a reviewed dub
 
 **Recognize → Translate → Review → Speak → Fit → Synchronize → Export**
 
@@ -195,47 +280,116 @@ record of what someone originally said. Label any shared clip as AI-dubbed.
 
 **Privacy:** inference uses local adapters. Initial model setup contacts model hosts to download weights.
 Uploads and outputs remain on disk. This studio is intended for one trusted local operator.
-''')
-            with gr.Tab('System check'):
-                gr.Markdown('## Prepare the workstation\nCopy `configs/local.example.json` to `configs/local.json`, '
-                            'then set your Python environments and model paths. See **docs/SETUP.md** in the repository. '
-                            'Checks below do not download or run models.')
-                checks = gr.Dataframe(headers=['Check', 'Status', 'Details'],
-                                      value=[[c['name'], 'OK' if c['ok'] else ('Missing' if c['required'] else 'Optional'),
-                                              c['detail']] for c in report['checks']],
-                                      interactive=False, wrap=True, label='Local dependency readiness')
-                refresh = gr.Button('Refresh system check')
-                gr.Markdown('A successful check validates local paths only. Rehearse all model stages with a permitted '
-                            'clip before presenting. Model access and auxiliary weights still need verification.')
-        gr.HTML('<div id="footer">Multilingua · English–Hindi recorded-video research prototype · Review before sharing</div>')
-        shared = {'concurrency_id': 'model-work', 'concurrency_limit': 1}
-        prep.click(prepare, [source, consent],
-                   [job, review, output, captions, bundle, status, render_button, details, approved], **shared)
-        render_button.click(render, [job, review, consent, approved, mode],
-                            [output, captions, bundle, status, details], **shared)
+""")
+            with gr.Tab("System check"):
+                gr.Markdown(
+                    "## Prepare the workstation\nCopy `configs/local.example.json` to `configs/local.json`, "
+                    "then set your Python environments and model paths. See **docs/SETUP.md** in the repository. "
+                    "Checks below do not download or run models."
+                )
+                checks = gr.Dataframe(
+                    headers=["Check", "Status", "Details"],
+                    value=[
+                        [
+                            c["name"],
+                            "OK" if c["ok"] else ("Missing" if c["required"] else "Optional"),
+                            c["detail"],
+                        ]
+                        for c in report["checks"]
+                    ],
+                    interactive=False,
+                    wrap=True,
+                    label="Local dependency readiness",
+                )
+                refresh = gr.Button("Refresh system check")
+                gr.Markdown(
+                    "A successful check validates local paths only. Rehearse all model stages with a permitted "
+                    "clip before presenting. Model access and auxiliary weights still need verification."
+                )
+        gr.HTML(
+            '<div id="footer">Multilingua · English–Hindi recorded-video research prototype · Review before sharing</div>'
+        )
+        shared = {"concurrency_id": "model-work", "concurrency_limit": 1}
+        prep.click(
+            prepare,
+            [source, consent],
+            [job, review, output, captions, bundle, status, render_button, details, approved],
+            **shared,
+        )
+        render_button.click(
+            render,
+            [job, review, consent, approved, mode],
+            [output, captions, bundle, status, details],
+            **shared,
+        )
 
         def reset_source():
-            return ('', [], None, None, None, False, False, gr.update(interactive=False),
-                    '**New source.** Confirm permission, then transcribe and translate.', {})
+            return (
+                "",
+                [],
+                None,
+                None,
+                None,
+                False,
+                False,
+                gr.update(interactive=False),
+                "**New source.** Confirm permission, then transcribe and translate.",
+                {},
+            )
 
-        source.change(reset_source, [], [job, review, output, captions, bundle, consent, approved,
-                                        render_button, status, details], **shared)
+        source.change(
+            reset_source,
+            [],
+            [
+                job,
+                review,
+                output,
+                captions,
+                bundle,
+                consent,
+                approved,
+                render_button,
+                status,
+                details,
+            ],
+            **shared,
+        )
         review.input(lambda: False, [], [approved], **shared)
 
         def refresh_checks():
             latest = diagnose(config)
-            return ([[c['name'], 'OK' if c['ok'] else ('Missing' if c['required'] else 'Optional'),
-                      c['detail']] for c in latest['checks']], readiness_markdown(latest))
+            return (
+                [
+                    [
+                        c["name"],
+                        "OK" if c["ok"] else ("Missing" if c["required"] else "Optional"),
+                        c["detail"],
+                    ]
+                    for c in latest["checks"]
+                ],
+                readiness_markdown(latest),
+            )
 
         refresh.click(refresh_checks, [], [checks, setup_note])
     return app
 
 
-def launch(config, runs='runs', port=7860):
+def launch(config, runs="runs", port=7860):
     import gradio as gr
+
     app = build_app(config, runs)
-    theme = gr.themes.Soft(primary_hue='teal', secondary_hue='slate', neutral_hue='slate',
-                           font=['ui-sans-serif', 'system-ui', 'sans-serif'])
+    theme = gr.themes.Soft(
+        primary_hue="teal",
+        secondary_hue="slate",
+        neutral_hue="slate",
+        font=["ui-sans-serif", "system-ui", "sans-serif"],
+    )
     app.queue(default_concurrency_limit=1, max_size=8).launch(
-        server_name='127.0.0.1', server_port=port, share=False,
-        max_file_size='200mb', theme=theme, css=CSS, footer_links=[])
+        server_name="127.0.0.1",
+        server_port=port,
+        share=False,
+        max_file_size="200mb",
+        theme=theme,
+        css=CSS,
+        footer_links=[],
+    )

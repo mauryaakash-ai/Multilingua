@@ -248,6 +248,7 @@ class Pipeline:
             if timeline and self.resident_pool and self.config.get("overlap_tts"):
                 prefetch = ThreadPoolExecutor(max_workers=1)
                 pending_tts = prefetch.submit(synthesize, 0)
+            phrase_number = 0
             for i, segment in enumerate(timeline):
                 if self.cancelled.is_set():
                     raise RuntimeError("Job cancelled")
@@ -264,15 +265,22 @@ class Pipeline:
                 media.cut(job / "source.mp4", work / "video.mp4", segment["start"], seconds)
                 speech = bool(segment.get("translation", "").strip())
                 if speech:
+                    phrase_number += 1
                     _, elapsed = synthesized if synthesized is not None else synthesize(i)
                     if not (work / "raw.wav").is_file():
                         raise RuntimeError("TTS did not create the requested WAV file")
-                    fitted = media.fit_audio(
-                        work / "raw.wav",
-                        work / "audio.wav",
-                        seconds,
-                        self.config.get("max_speech_speed", 1.25),
-                    )
+                    try:
+                        fitted = media.fit_audio(
+                            work / "raw.wav",
+                            work / "audio.wav",
+                            seconds,
+                            self.config.get("max_speech_speed", 1.25),
+                        )
+                    except media.SpeechTooLong as exc:
+                        raise media.SpeechTooLong(
+                            f"Review row {phrase_number} "
+                            f"({segment['start']:.2f}–{segment['end']:.2f}s). {exc}"
+                        ) from exc
                     alignment.append(
                         {
                             "segment": i,

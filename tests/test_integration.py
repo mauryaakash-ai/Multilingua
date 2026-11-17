@@ -128,6 +128,13 @@ class MediaIntegration(unittest.TestCase):
         with self.assertRaises(ValueError):
             media.fit_audio(src, self.root / "fit.wav", 1)
 
+    def test_overflow_identifies_the_review_row_after_leading_silence(self):
+        (self.root / "fake.py").write_text(FAKE.replace("duration=0.8", "duration=2"))
+        job = self.pipe.prepare(self.video, self.root / "runs")
+        with self.assertRaisesRegex(media.SpeechTooLong, r"Review row 1 \(0.40–1.40s\)"):
+            self.pipe.render(job, audio_only=True)
+        self.assertFalse((job / "output.mp4").exists())
+
     def test_moderate_speed_and_silence_fit(self):
         src = self.root / "audio.wav"
         media.ffmpeg("-f", "lavfi", "-i", "sine=frequency=440:duration=1.2", src)

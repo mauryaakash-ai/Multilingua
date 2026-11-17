@@ -96,13 +96,17 @@ def cut(src, dst, start, seconds):
     )
 
 
+class SpeechTooLong(ValueError):
+    """Synthesized speech cannot fit within the configured speed limit."""
+
+
 def fit_audio(src, dst, seconds, max_speed=1.25):
     if not math.isfinite(seconds) or seconds <= 0 or not 1 <= max_speed <= 1.25:
         raise ValueError("Use a positive finite slot and a speech speed cap between 1 and 1.25")
     actual = duration(src)
     ratio = actual / seconds
     if ratio > max_speed + 0.001:
-        raise ValueError(
+        raise SpeechTooLong(
             f"Translation needs {actual:.2f}s but slot is {seconds:.2f}s. "
             "Shorten the reviewed translation; audio was not truncated."
         )

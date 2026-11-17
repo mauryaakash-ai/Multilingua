@@ -118,7 +118,7 @@ costs. It does not capture a webcam or perform streaming inference.
 
 ## License and reproducibility
 Project-authored code is MIT (LICENSE). Third-party models, code and datasets keep their own terms.
-No model weights are bundled. Explicit permission is required for the supplied TTS reference voice.
+No model weights are bundled. Voice-cloning configurations require permission for the reference voice; generic Parler presets do not use a reference recording.
 Record OS, GPU, driver, FFmpeg version, model revisions and frozen packages with each experiment.
 
 ## Causal replay benchmark (implemented, not webcam streaming)
@@ -149,3 +149,22 @@ The reviewed demo assets and measurements are in `runs/hdtf-male-demo/`.
 `audio-only.mp4` retains original lips; `lipsynced.mp4` is the MuseTalk output when rendering succeeds.
 `subtitles.srt`, `alignment.json`, and `provenance.json` record text, timing, and model sources.
 Human listening and temporal lip-quality review remain necessary before treating this as a benchmark.
+
+
+## Evaluation and experimental webcam service
+See `docs/EVALUATION_REPORT.md` for measured results and limitations. Reproducible metric entry points:
+- `scripts/evaluate_syncnet.py`: official face tracking plus SyncNet scores, offsets and provenance.
+- `scripts/evaluate_hindi_speech.py`: Hindi recognition consistency (WER/CER), not human MOS.
+- `scripts/evaluate_text.py`: reference-based WER/CER and chrF++; missing references stay unscored.
+
+`python scripts/serve_local.py` starts an authenticated **localhost-only** test service on port 7861.
+Credentials are generated into `.runtime/local-login.json` (private, gitignored); open in a browser
+that supports HTTP Basic authentication. Some embedded browsers do not support its login prompt.
+Camera and microphone activate only when the user clicks Start and grants browser permission.
+The experimental frontend sends complete six-second recordings, with a bounded queue and explicit
+failure/overload messages. It is not continuous WebRTC or validated real-time dubbing. Queued jobs
+continue after capture stops. Automatic timing may use leading/following silence, recorded in job
+metadata; it never raises the 1.25x speed cap. Overlong translations still need manual review.
+
+`deploy/` contains a single-operator authenticated API deployment candidate with systemd and Caddy
+configuration. No public host is provisioned. See its README for remaining release requirements.

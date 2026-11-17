@@ -1,3 +1,12 @@
+# Current status — 2026-11-16
+
+The historical roadmap below is retained for scope. Current evidence is in EVALUATION_REPORT.md.
+Reference translation and SyncNet evaluation now run; three development speakers have outputs.
+Experimental browser capture and an authenticated bounded HTTP job queue are implemented.
+Persistent model workers, continuous WebRTC playback, sustained real-time performance, broad
+held-out quality validation, and public production deployment remain incomplete. The user has
+not selected a hosting provider or budget; no paid resources or public endpoints were created.
+
 # Implementation and completion plan
 
 ## Project definition

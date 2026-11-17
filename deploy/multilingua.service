@@ -1,0 +1,17 @@
+[Unit]
+Description=Multilingua single-operator GPU service
+After=network-online.target
+[Service]
+Type=simple
+User=multilingua
+WorkingDirectory=/opt/multilingua
+EnvironmentFile=/etc/multilingua.env
+ExecStart=/opt/multilingua/.venv-service/bin/uvicorn multilingua.server:create_app --factory --host 127.0.0.1 --port 7861 --workers 1
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+TimeoutStopSec=3700
+[Install]
+WantedBy=multi-user.target

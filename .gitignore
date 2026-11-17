@@ -14,3 +14,16 @@ datasets/
 .venv-tts/
 
 .venv-voice/
+
+.runtime/
+
+vendor/syncnet_python/data/
+vendor/syncnet_python/detectors/s3fd/weights/
+
+.venv-latentsync/
+vendor/LatentSync/checkpoints/
+vendor/LatentSync/temp/
+
+presentation/.build/
+outputs/
+

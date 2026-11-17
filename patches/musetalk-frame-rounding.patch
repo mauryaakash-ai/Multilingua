@@ -1,0 +1,5 @@
+--- a/musetalk/utils/audio_processor.py
++++ b/musetalk/utils/audio_processor.py
+@@ -63 +63 @@
+-        num_frames = math.floor((librosa_length / sr) * fps)
++        num_frames = math.floor((librosa_length / sr) * fps + 1e-6)

@@ -9,8 +9,8 @@ p.add_argument('--request', required=True)
 p.add_argument('--response', required=True)
 a = p.parse_args()
 r = json.loads(Path(a.request).read_text())
-if r.get('language', 'hi') != 'hi':
-    raise ValueError('This configuration supports Hindi only')
+if r.get('language', 'hi') not in ('hi','ta','te'):
+    raise ValueError('Unsupported configured TTS language')
 import torch
 import soundfile as sf
 from parler_tts import ParlerTTSForConditionalGeneration
@@ -19,7 +19,13 @@ from transformers import AutoTokenizer
 started = time.monotonic()
 device = r.get('device', 'cuda')
 model_path = r['model']
-model = ParlerTTSForConditionalGeneration.from_pretrained(model_path).to(device).eval()
+precision = r.get('dtype', 'float32')
+if precision not in ('float32', 'float16'):
+    raise ValueError('TTS dtype must be float32 or float16')
+if precision == 'float16' and not str(device).startswith('cuda'):
+    raise ValueError('Half-precision TTS requires CUDA')
+model = ParlerTTSForConditionalGeneration.from_pretrained(
+    model_path, torch_dtype=getattr(torch, precision)).to(device).eval()
 tokenizer = AutoTokenizer.from_pretrained(model_path)
 description_tokenizer = AutoTokenizer.from_pretrained(model.config.text_encoder._name_or_path)
 description = r.get('description', 'Rohit speaks in a mature male voice with a slightly low pitch and a calm, formal delivery at a moderately quick pace. Very clear audio, close recording, no background noise.')
@@ -41,5 +47,5 @@ for item in r.get('items', [r]):
     rows.append({'audio':item['output'], 'audio_seconds':len(audio)/sr,
                  'inference_seconds':time.monotonic()-began})
     print(json.dumps(rows[-1]), flush=True)
-Path(a.response).write_text(json.dumps({'load_seconds':loaded-started, 'voice_description':description,
+Path(a.response).write_text(json.dumps({'load_seconds':loaded-started, 'dtype':precision, 'voice_description':description,
     'items':rows, **(rows[0] if len(rows)==1 else {})}, indent=2))

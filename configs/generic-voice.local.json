@@ -28,6 +28,7 @@
   "tts": {
     "model": "/home/akash/A Nitin/multilingua/models/indic-parler",
     "device": "cuda",
+    "dtype": "float16",
     "description": "Rohit speaks in a mature male voice with a slightly low pitch. He delivers a formal speech clearly and confidently at a moderately fast pace, with a little natural room reverberation and no background noise.",
     "language": "hi"
   },
@@ -36,6 +37,7 @@
   "lipsync": {
     "repo": "/home/akash/MuseTalk",
     "python": "/home/akash/MuseTalk/.venv/bin/python",
-    "batch_size": 2
+    "batch_size": 2,
+    "quality_mode": "mouth"
   }
 }

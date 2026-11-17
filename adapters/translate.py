@@ -6,6 +6,8 @@ p.add_argument('--device',default='cpu');a=p.parse_args()
 r=json.loads(Path(a.request).read_text())
 os.environ.setdefault('HF_MODULES_CACHE', str(Path(__file__).resolve().parents[1]/'models'/'modules'))
 import torch
+if a.device == 'cpu':
+    torch.set_num_threads(int(os.environ.get('MULTILINGUA_CPU_THREADS', '4')))
 from transformers import AutoTokenizer,AutoModelForSeq2SeqLM
 from IndicTransToolkit import IndicProcessor
 processor=IndicProcessor(inference=True)

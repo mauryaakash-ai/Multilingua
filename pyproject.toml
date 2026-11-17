@@ -9,6 +9,7 @@ requires-python = ">=3.10"
 dependencies = []
 [project.optional-dependencies]
 ui = ["gradio>=6,<7"]
+server = ["fastapi==0.141.1", "uvicorn==0.52.4"]
 [project.scripts]
 multilingua = "multilingua.cli:main"
 [tool.setuptools.packages.find]

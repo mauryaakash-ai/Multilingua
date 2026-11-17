@@ -1,0 +1,6 @@
+[submodule "vendor/LatentSync"]
+	path = vendor/LatentSync
+	url = https://github.com/bytedance/LatentSync.git
+[submodule "vendor/syncnet_python"]
+	path = vendor/syncnet_python
+	url = https://github.com/joonson/syncnet_python.git

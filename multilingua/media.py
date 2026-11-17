@@ -33,7 +33,7 @@ def normalize(src, dst):
     if duration(src) > 600:
         raise ValueError('Prototype supports clips up to 10 minutes')
     ffmpeg('-i', src, '-map', '0:v:0', '-map', '0:a:0', '-vf',
-           "scale=trunc(iw/2)*2:trunc(ih/2)*2,fps=25", '-c:v', 'libx264',
+           "scale=trunc(iw/2)*2:trunc(ih/2)*2,fps=25", '-c:v', 'libx264', '-crf', '18',
            '-preset', 'fast', '-pix_fmt', 'yuv420p', '-c:a', 'aac', dst)
 
 def extract_audio(src, dst):
@@ -41,7 +41,7 @@ def extract_audio(src, dst):
 
 def cut(src, dst, start, seconds):
     ffmpeg('-ss', f'{start:.6f}', '-i', src, '-t', f'{seconds:.6f}',
-           '-an', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-r', '25', dst)
+           '-an', '-c:v', 'libx264', '-crf', '18', '-pix_fmt', 'yuv420p', '-r', '25', dst)
 
 def fit_audio(src, dst, seconds, max_speed=1.25):
     actual = duration(src)
@@ -60,7 +60,7 @@ def silence(dst, seconds):
 
 def mux(video, audio, dst, seconds):
     ffmpeg('-i', video, '-i', audio, '-map', '0:v:0', '-map', '1:a:0',
-           '-t', str(seconds), '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
+           '-t', str(seconds), '-c:v', 'libx264', '-crf', '18', '-pix_fmt', 'yuv420p',
            '-c:a', 'aac', '-movflags', '+faststart', dst)
 
 def concatenate(parts, dst):
@@ -77,5 +77,5 @@ def concatenate(parts, dst):
         labels.append(f'[v{i}][a{i}]')
     filters.append(''.join(labels) + f'concat=n={len(parts)}:v=1:a=1[v][a]')
     ffmpeg(*inputs, '-filter_complex', ';'.join(filters), '-map', '[v]',
-           '-map', '[a]', '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
+           '-map', '[a]', '-c:v', 'libx264', '-crf', '18', '-pix_fmt', 'yuv420p',
            '-c:a', 'aac', '-movflags', '+faststart', dst)

@@ -78,3 +78,11 @@ Atomic video publication now preserves a previous completed video after failed r
   compatible protobuf for the generic TTS tokenizer.
 - All 16 unit/integration tests pass (4.193 s). Gradio 6.31 local UI opened successfully
   with `configs/generic-voice.local.json`; bound to localhost, no public deployment.
+
+
+## Extended evaluation and service checks — 2026-11-16
+See EVALUATION_REPORT.md for the authoritative current results and limitations.
+30 tests pass (5.276 seconds). A real HTTP upload returned a 5-second dubbed output in
+52.299 seconds with 125/125 frames. Three development speakers have output videos.
+SyncNet and FLORES chrF++ scores are measured; human voice/translation ratings remain unscored.
+Real-time performance and public deployment remain incomplete.

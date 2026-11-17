@@ -7,7 +7,7 @@ from .pipeline import Pipeline, read_json, write_json
 from .timeline import validate_segments
 
 CSS = """
-.gradio-container {max-width: 1220px !important; margin: auto;}
+.gradio-container {width: 100% !important; max-width: min(1220px, 100vw) !important; margin: auto;}
 body {background: #f5f7fa;}
 #masthead {background: #102b3b; color: #fff; border-radius: 20px;
   padding: 32px 36px; margin: 10px 0 18px;}
@@ -29,6 +29,8 @@ body {background: #f5f7fa;}
 #setup-note p {color: #694e1c; margin: 0;}
 .section-label {font-size: 11px; letter-spacing: 1.5px; color: #526b7a; font-weight: 700; margin: 14px 0 8px;}
 #review-table {font-size: 15px;}
+#review-table .table-container {overflow-x: auto !important;}
+#review-table .table-wrap {min-width: 1000px;}
 #footer {text-align: center; color: #526b7a; font-size: 12px; padding: 20px 0 8px;}
 @media (max-width: 640px) {
   #masthead {padding: 24px;} .flow {grid-template-columns: 1fr; gap: 8px;}
@@ -207,7 +209,7 @@ def build_app(config="configs/local.json", runs="runs"):
                 gr.HTML('<div class="section-label">02 / REVIEW THE TRANSLATION</div>')
                 gr.Markdown(
                     "Edit the **Hindi translation** column. Keep names, numbers and meaning intact. "
-                    "Short, natural phrases are easier to fit to the original timing."
+                    "Short, natural phrases are easier to fit to the original timing. On small screens, scroll the table sideways."
                 )
                 review = gr.Dataframe(
                     headers=[

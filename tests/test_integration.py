@@ -4,6 +4,7 @@ import json
 import sys
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from multilingua import media
@@ -70,6 +71,21 @@ class MediaIntegration(unittest.TestCase):
         self.assertFalse(read_json(job / "job.json")["lip_sync"])
         self.assertIn("नमस्ते", (job / "subtitles.srt").read_text())
         self.assertEqual(len(list((job / "current").glob("part_*.mp4"))), 3)
+
+    def test_quick_preview_returns_text_before_full_voice_track(self):
+        from multilingua.quick import quick_dub
+
+        (self.root / "fake.py").write_text(FAKE.replace("duration=0.8", "duration=2.6"))
+        quick_jobs = self.root / "quick"
+        with closing(quick_dub(self.video, self.pipe.config_path, quick_jobs)) as result:
+            draft = next(result)
+            job = next(quick_jobs.iterdir())
+            self.assertEqual(draft["english"], "Hello")
+            self.assertEqual(draft["hindi"], "नमस्ते")
+            self.assertFalse((job / "tts_request.json").exists())
+            preview = next(result)
+        self.assertAlmostEqual(media.duration(preview["video"]), 2.6, delta=0.06)
+        self.assertIn("00:00:02,600", Path(preview["subtitles"]).read_text())
 
     def test_lip_failure_never_succeeds_as_passthrough(self):
         job = self.pipe.prepare(self.video, self.root / "runs")

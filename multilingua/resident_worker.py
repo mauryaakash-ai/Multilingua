@@ -16,7 +16,9 @@ from pathlib import Path
 p = argparse.ArgumentParser()
 p.add_argument("--socket", required=True)
 p.add_argument("--stage", required=True)
+p.add_argument("--adapter")
 a = p.parse_args()
+parent_pid = os.getppid()
 
 
 def cached_factory(owner, name):
@@ -38,16 +40,28 @@ if a.stage == "asr":
 
     cached_factory(faster_whisper, "WhisperModel")
 elif a.stage == "translate":
-    from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+    if a.adapter == "translate_marian.py":
+        from transformers import MarianMTModel, MarianTokenizer
 
-    cached_factory(AutoTokenizer, "from_pretrained")
-    cached_factory(AutoModelForSeq2SeqLM, "from_pretrained")
+        cached_factory(MarianTokenizer, "from_pretrained")
+        cached_factory(MarianMTModel, "from_pretrained")
+    else:
+        from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+
+        cached_factory(AutoTokenizer, "from_pretrained")
+        cached_factory(AutoModelForSeq2SeqLM, "from_pretrained")
 elif a.stage == "tts":
-    from parler_tts import ParlerTTSForConditionalGeneration
     from transformers import AutoTokenizer
 
     cached_factory(AutoTokenizer, "from_pretrained")
-    cached_factory(ParlerTTSForConditionalGeneration, "from_pretrained")
+    if a.adapter == "tts_mms.py":
+        from transformers import VitsModel
+
+        cached_factory(VitsModel, "from_pretrained")
+    else:
+        from parler_tts import ParlerTTSForConditionalGeneration
+
+        cached_factory(ParlerTTSForConditionalGeneration, "from_pretrained")
 elif a.stage == "lipsync":
     os.chdir("/home/akash/MuseTalk")
     sys.path.insert(0, os.getcwd())
@@ -127,5 +141,11 @@ class Handler(socketserver.StreamRequestHandler):
         self.wfile.write((json.dumps(reply) + "\n").encode())
 
 
-with socketserver.UnixStreamServer(a.socket, Handler) as server:
+class WorkerServer(socketserver.UnixStreamServer):
+    def service_actions(self):
+        if os.getppid() != parent_pid:
+            raise SystemExit("Controller exited")
+
+
+with WorkerServer(a.socket, Handler) as server:
     server.serve_forever()

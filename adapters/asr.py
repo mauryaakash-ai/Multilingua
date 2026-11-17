@@ -12,7 +12,9 @@ r = json.loads(Path(a.request).read_text(encoding="utf-8"))
 from faster_whisper import WhisperModel
 
 m = WhisperModel(a.model, device=a.device, compute_type="float16" if a.device == "cuda" else "int8")
-segments, info = m.transcribe(r["audio"], language=r["language"], vad_filter=True, beam_size=5)
+segments, info = m.transcribe(
+    r["audio"], language=r["language"], vad_filter=True, beam_size=r.get("beam_size", 5)
+)
 # Whisper may place a final segment beyond EOF; bound timestamps to decoded audio.
 out = [
     {"start": max(0.0, s.start), "end": min(info.duration, s.end), "text": s.text.strip()}

@@ -26,12 +26,12 @@ class ResidentPool:
 
     def supports(self, stage, command):
         names = {
-            "asr": "asr.py",
-            "translate": "translate.py",
-            "tts": "tts_parler.py",
-            "lipsync": "lipsync_musetalk.py",
+            "asr": {"asr.py"},
+            "translate": {"translate.py", "translate_marian.py"},
+            "tts": {"tts_parler.py", "tts_mms.py"},
+            "lipsync": {"lipsync_musetalk.py"},
         }
-        return stage in names and len(command) > 1 and Path(command[1]).name == names[stage]
+        return len(command) > 1 and Path(command[1]).name in names.get(stage, ())
 
     def _stop(self, stage):
         item = self.workers.pop(stage, None)
@@ -80,6 +80,8 @@ class ResidentPool:
                                     str(ROOT / "multilingua/resident_worker.py"),
                                     "--stage",
                                     stage,
+                                    "--adapter",
+                                    Path(command[1]).name,
                                     "--socket",
                                     str(sock),
                                 ],

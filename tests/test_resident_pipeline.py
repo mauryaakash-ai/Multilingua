@@ -12,7 +12,7 @@ class ResidentPipelineTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             config = root / "config.json"
-            write_json(config, {"commands": {}, "overlap_tts": True})
+            write_json(config, {"commands": {}, "overlap_tts": True, "speech_preflight": False})
             write_json(root / "job.json", {"duration": 2, "target_language": "hi"})
             write_json(
                 root / "segments.json",

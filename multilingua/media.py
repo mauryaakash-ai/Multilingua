@@ -67,6 +67,8 @@ def normalize(src, dst):
         "yuv420p",
         "-c:a",
         "aac",
+        "-movflags",
+        "+faststart",
         dst,
     )
 

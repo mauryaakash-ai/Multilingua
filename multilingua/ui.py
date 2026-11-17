@@ -70,7 +70,7 @@ def readiness_markdown(report):
     return "**Local paths checked.** Run a short real clip to verify model access and quality."
 
 
-def build_app(config="configs/local.json", runs="runs"):
+def build_app(config="configs/local.json", runs="runs", resident_pool=None):
     import gradio as gr
 
     runs = Path(runs).resolve()
@@ -96,7 +96,7 @@ def build_app(config="configs/local.json", runs="runs"):
                 raise ValueError(
                     "Confirm permission to process and dub the video before continuing."
                 )
-            pipe = Pipeline(config, progress=lambda value, message: progress(value, desc=message))
+            pipe = Pipeline(config, resident_pool=resident_pool, progress=lambda value, message: progress(value, desc=message))
             pipe.config["target_language"] = "hi"
             job = pipe.prepare(video, runs)
             if read_json(job / "job.json").get("no_speech"):
@@ -130,7 +130,7 @@ def build_app(config="configs/local.json", runs="runs"):
             )
 
     def render(job, rows, consent, approved, mode, progress=gr.Progress()):
-        yield None, None, None, "**Checking review and preparing speech…**", {}
+        yield gr.skip(), gr.skip(), gr.skip(), "**Checking every speech slot before lip generation.** Long speech gets up to two faster-delivery retries with unchanged words, followed by a supported Hindi grammar contraction if needed (logged as AI-revised). Any previous successful result remains available below.", {}
         try:
             if not consent:
                 raise ValueError("Confirm permission to edit and dub this video.")
@@ -149,7 +149,10 @@ def build_app(config="configs/local.json", runs="runs"):
             )
             review = folder / "ui_review.json"
             write_json(review, segments)
-            pipe = Pipeline(config, progress=lambda value, message: progress(value, desc=message))
+            pipe = Pipeline(config, resident_pool=resident_pool, progress=lambda value, message: progress(value, desc=message))
+            pipe.config["overlap_tts"] = resident_pool is not None
+            pipe.config["auto_compact_hindi"] = True
+            pipe.config["rebalance_speech_timing"] = True
             audio_only = mode == "Audio-only comparison"
             output = pipe.render(folder, review, audio_only)
             result = read_json(folder / "job.json")
@@ -160,12 +163,16 @@ def build_app(config="configs/local.json", runs="runs"):
                 str((folder / "delivery.zip").resolve()),
                 f"**Complete · {'audio-only comparison' if audio_only else 'lip-synced Hindi'} · AI-dubbed.** "
                 f"{result['output_seconds']:.1f} s video · {result['render_seconds']:.1f} s render. "
-                "Watch and listen before sharing.",
+                "Watch and listen before sharing."
+                + (" AI shortened a Hindi phrase for timing; check the timing edits in Run details."
+                   if result.get("automatic_timing_edits") else "")
+                + (" Phrase boundaries shifted by at most one second to fit speech; see Run details."
+                   if result.get("timing_adjustments") else ""),
                 result,
             )
         except (ValueError, OSError, RuntimeError, KeyError) as exc:
             gr.Warning(str(exc))
-            yield None, None, None, "**Render stopped.** " + str(exc), {}
+            yield gr.skip(), gr.skip(), gr.skip(), "**No new video was generated.** " + str(exc) + " Edit the indicated Hindi phrase and approve it again. Any previous successful result is still playable.", {}
 
     with gr.Blocks(
         title="Multilingua | Dubbing Studio", analytics_enabled=False, delete_cache=(3600, 86400)
@@ -189,16 +196,16 @@ def build_app(config="configs/local.json", runs="runs"):
                 with gr.Row(equal_height=True):
                     with gr.Column():
                         gr.HTML('<div class="section-label">01 / ENGLISH SOURCE</div>')
-                        source = gr.Video(label="Original video", sources=["upload"], height=280)
+                        source = gr.Video(label="Original video", sources=["upload", "webcam"], format="mp4", height=280)
                         gr.Markdown(
                             "Start with a **10–20 second** clip: one consenting adult, a frontal face, "
                             "and clear English speech. Maximum 10 minutes / 200 MB."
                         )
                     with gr.Column():
                         gr.HTML('<div class="section-label">03 / HINDI OUTPUT · AI-DUBBED</div>')
-                        output = gr.Video(label="Dubbed video", interactive=False, height=280)
+                        output = gr.Video(label="Dubbed video · available after successful generation", format="mp4", interactive=False, height=280)
                         gr.Markdown(
-                            "The generated voice may differ from the speaker. "
+                            "The player stays empty until generation succeeds. Webcam records a clip; it is not live dubbing. The generated voice may differ from the speaker. "
                             "Audio-only mode keeps the original mouth movements."
                         )
                 consent = gr.Checkbox(
@@ -261,6 +268,40 @@ def build_app(config="configs/local.json", runs="runs"):
                         "Render time includes model loading. It is not live streaming latency. "
                         "Jobs and logs stay in your local runs folder until you delete them."
                     )
+            with gr.Tab("Saved results"):
+                gr.Markdown("Completed videos stay here after refreshing. Select a result to compare the original and dub. AI-revised translations still need human review.")
+                saved = gr.Dropdown(label="Completed job", choices=[], interactive=True)
+                refresh_saved = gr.Button("Refresh completed videos")
+                with gr.Row():
+                    saved_source = gr.Video(label="Saved original", interactive=False, format="mp4")
+                    saved_output = gr.Video(label="Saved dubbed video", interactive=False, format="mp4")
+                saved_bundle = gr.File(label="Download delivery ZIP", interactive=False)
+
+                def completed_jobs():
+                    jobs = sorted((p.parent for p in runs.glob("*/output.mp4")),
+                                  key=lambda p: (p / "output.mp4").stat().st_mtime, reverse=True)
+                    choices = []
+                    for folder in jobs[:30]:
+                        metadata = read_json(folder / "job.json") if (folder / "job.json").exists() else {}
+                        mode = "Lip-synced" if metadata.get("lip_sync") else "Audio-only"
+                        seconds = metadata.get("output_seconds", metadata.get("duration", 0))
+                        choices.append((f"{mode} · {seconds:.1f}s · {folder.name[:8]}", folder.name))
+                    return gr.update(choices=choices, value=None)
+
+                def show_saved(name):
+                    if not name:
+                        return None, None, None
+                    folder = (runs / name).resolve()
+                    if folder.parent != runs or not (folder / "output.mp4").is_file():
+                        raise gr.Error("Unknown completed job")
+                    def artifact(filename):
+                        p = folder / filename
+                        return str(p.resolve()) if p.is_file() else None
+                    return artifact("source.mp4"), artifact("output.mp4"), artifact("delivery.zip")
+
+                app.load(completed_jobs, [], [saved])
+                refresh_saved.click(completed_jobs, [], [saved])
+                saved.change(show_saved, [saved], [saved_source, saved_output, saved_bundle])
             with gr.Tab("How it works"):
                 gr.Markdown("""## From a spoken idea to a reviewed dub
 
@@ -381,8 +422,18 @@ Uploads and outputs remain on disk. This studio is intended for one trusted loca
 
 def launch(config, runs="runs", port=7860):
     import gradio as gr
+    import atexit
+    import signal
+    from .resident import ResidentPool
 
-    app = build_app(config, runs)
+    pool = ResidentPool(Path(runs) / "studio-worker-logs")
+    atexit.register(pool.close)
+    def shutdown_studio(signum, frame):
+        # SIGTERM otherwise bypasses atexit and leaves GPU workers running.
+        pool.close()
+        raise SystemExit(0)
+    signal.signal(signal.SIGTERM, shutdown_studio)
+    app = build_app(config, runs, resident_pool=pool)
     theme = gr.themes.Soft(
         primary_hue="teal",
         secondary_hue="slate",

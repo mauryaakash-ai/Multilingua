@@ -1,4 +1,26 @@
 import math
+import re
+
+
+def sentence_segments(segments, max_seconds=12.0, max_gap=0.4):
+    """Join adjacent ASR fragments so translation receives complete sentences.
+
+    Bounds prevent grouping long monologues or spanning meaningful pauses.
+    Only use before translation/review; never rewrite approved timestamps.
+    """
+    grouped = []
+    for segment in segments:
+        item = dict(segment)
+        if grouped:
+            previous = grouped[-1]
+            complete = re.search(r'[.!?][\"\u201d\u2019\)]?$', previous["text"].strip())
+            if (not complete and 0 <= item["start"] - previous["end"] <= max_gap
+                    and item["end"] - previous["start"] <= max_seconds):
+                previous["text"] = previous["text"].rstrip() + " " + item["text"].lstrip()
+                previous["end"] = item["end"]
+                continue
+        grouped.append(item)
+    return grouped
 
 
 def validate_segments(segments, total, translated=False):

@@ -1,5 +1,46 @@
 {
-  "hi": {"name":"Hindi","source_asr_language":"en","translation_source":"eng_Latn","translation_target":"hin_Deva","translation_model":"indictrans2-en-indic-dist-200M","tts_model":"indic-parler","voice":"Rohit","description":"Rohit speaks clearly in Hindi with a mature male voice, at a moderately fast pace. Close recording with clear audio and no background noise.","review_status":"native review pending"},
-  "ta": {"name":"Tamil","source_asr_language":"en","translation_source":"eng_Latn","translation_target":"tam_Taml","translation_model":"indictrans2-en-indic-dist-200M","tts_model":"indic-parler","voice":"Jaya","description":"Jaya speaks clearly in Tamil with a natural female voice, at a moderately fast pace. Close recording with clear audio and no background noise.","review_status":"experimental; native review pending"},
-  "te": {"name":"Telugu","source_asr_language":"en","translation_source":"eng_Latn","translation_target":"tel_Telu","translation_model":"indictrans2-en-indic-dist-200M","tts_model":"indic-parler","voice":"Prakash","description":"Prakash speaks clearly in Telugu with a natural male voice, at a moderately fast pace. Close recording with clear audio and no background noise.","review_status":"experimental; native review pending"}
+  "hi": {
+    "name": "Hindi",
+    "source_asr_language": "en",
+    "translation_source": "eng_Latn",
+    "translation_target": "hin_Deva",
+    "translation_model": "indictrans2-en-indic-dist-200M",
+    "tts_model": "indic-parler",
+    "voice": "Rohit",
+    "description": "Rohit speaks clearly in Hindi with a mature male voice, at a moderately fast pace. Close recording with clear audio and no background noise.",
+    "review_status": "native review pending"
+  },
+  "ta": {
+    "name": "Tamil",
+    "source_asr_language": "en",
+    "translation_source": "eng_Latn",
+    "translation_target": "tam_Taml",
+    "translation_model": "indictrans2-en-indic-dist-200M",
+    "tts_model": "indic-parler",
+    "voice": "Jaya",
+    "description": "Jaya speaks clearly in Tamil with a natural female voice, at a moderately fast pace. Close recording with clear audio and no background noise.",
+    "review_status": "experimental; native review pending"
+  },
+  "te": {
+    "name": "Telugu",
+    "source_asr_language": "en",
+    "translation_source": "eng_Latn",
+    "translation_target": "tel_Telu",
+    "translation_model": "indictrans2-en-indic-dist-200M",
+    "tts_model": "indic-parler",
+    "voice": "Prakash",
+    "description": "Prakash speaks clearly in Telugu with a natural male voice, at a moderately fast pace. Close recording with clear audio and no background noise.",
+    "review_status": "experimental; native review pending"
+  },
+  "es": {
+    "name": "Spanish",
+    "source_asr_language": "en",
+    "translation_source": "eng_Latn",
+    "translation_target": "spa_Latn",
+    "translation_model": "nllb-200-distilled-600M",
+    "tts_model": "xtts-v2",
+    "voice": "Ana Florence",
+    "description": "Bundled generic XTTS voice",
+    "review_status": "adapter only; model inference and native review pending"
+  }
 }

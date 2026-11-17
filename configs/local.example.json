@@ -2,17 +2,37 @@
   "timeout_seconds": 1800,
   "max_speech_speed": 1.25,
   "commands": {
-    "asr": ["/home/akash/miniconda3/envs/mlspeech/bin/python", "{project}/adapters/asr.py", "--device", "cpu"],
-    "translate": ["/home/akash/miniconda3/envs/mlspeech/bin/python", "{project}/adapters/translate.py", "--device", "cpu"],
-    "tts": ["/home/akash/miniconda3/envs/mltts/bin/python", "{project}/adapters/tts_indicf5.py"],
-    "lipsync": ["python", "{project}/adapters/lipsync_musetalk.py"]
+    "asr": [
+      "{project}/.venv-speech/bin/python",
+      "{project}/adapters/asr.py",
+      "--model",
+      "small.en",
+      "--device",
+      "cpu"
+    ],
+    "translate": [
+      "{project}/.venv-translation/bin/python",
+      "{project}/adapters/translate.py",
+      "--device",
+      "cpu"
+    ],
+    "tts": [
+      "{project}/.venv-voice/bin/python",
+      "{project}/adapters/tts_parler.py"
+    ],
+    "lipsync": [
+      "{python}",
+      "{project}/adapters/lipsync_musetalk.py"
+    ]
   },
   "tts": {
-    "reference_audio": "/home/akash/voice_reference.wav",
-    "reference_text": "REPLACE WITH THE EXACT WORDS SPOKEN IN YOUR REFERENCE AUDIO"
+    "model": "ai4bharat/indic-parler-tts",
+    "device": "cuda",
+    "description": "Rohit speaks in a calm, clear male voice at a moderately quick pace. Very clear audio, no background noise."
   },
   "lipsync": {
-    "repo": "/home/akash/MuseTalk",
-    "python": "/home/akash/miniconda3/envs/musetalk/bin/python"
+    "repo": "${HOME}/MuseTalk",
+    "python": "${HOME}/MuseTalk/.venv/bin/python",
+    "batch_size": 2
   }
 }

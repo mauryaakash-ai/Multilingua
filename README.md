@@ -1,170 +1,94 @@
-# Multilingua • English–Hindi Lip-Synced Video Dubbing
+# Multilingua
 
-A local research implementation with a reviewable offline pipeline, model adapters,
-FFmpeg media handling, optional UI, tests and a concrete plan to reach live streaming.
+**Reviewable English → Hindi video dubbing, with optional lip synchronization.**
 
-**Status:** orchestration and synthetic media tests can run without a GPU. Neural model integration
-requires official downloads and verification on your machine. Live webcam translation is not implemented.
-See docs/COMPLETION_PLAN.md for completion gates and docs/VALIDATION.md for actual test results.
+Help an educator bring a short English explanation to Hindi-speaking learners. Upload a recorded video, review every translated phrase, generate speech that fits the original timing, and export a disclosed AI-dubbed video with subtitles and a review record.
 
-## Quick start: infrastructure only (Ubuntu)
+![Multilingua studio](docs/assets/studio.png)
+
+> **Readiness:** the controller, media pipeline and local studio have automated validation. Full neural rehearsal and bilingual audiovisual approval are still required on the presentation workstation. Original demo videos and model weights were not committed and are currently inaccessible. No synthetic test output is presented as real Hindi speech or lip editing. See [validation](docs/VALIDATION.md).
+
+## What it does
+
+- Transcribes English speech with Whisper and translates it using IndicTrans2.
+- Gives you a side-by-side Hindi review table with protected source text and timestamps.
+- Generates a generic Hindi voice with Indic Parler-TTS, or a permitted reference voice through IndicF5.
+- Fits speech to its time slot with at most 1.25× acceleration; rejects longer speech for revision.
+- Optionally edits mouth movements with MuseTalk; audio-only comparison is an explicit mode.
+- Exports MP4, Hindi SRT, reviewed text, timing measurements, provenance and a ZIP delivery.
+- Retains the previous successful output and matching metadata if a later render fails.
+
+**Scope:** one visible consenting adult, clear English audio, frontal face, recorded clips up to 10 minutes. Start with 10–20 seconds. Background music is not retained. The studio focuses on recorded Hindi dubbing. The repository also includes an experimental local capture service and causal file replay. Both process complete clips or chunks. Multiple speakers and continuous WebRTC calls remain outside scope.
+
+## Open the studio
+
 ```bash
-sudo apt update
-sudo apt install ffmpeg python3-venv
+git clone https://github.com/mauryaakash-ai/Multilingua.git
+cd Multilingua
+# Ubuntu prerequisite: sudo apt install ffmpeg python3-venv
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -e .
-python -m unittest discover -s tests -v
-cp configs/local.example.json configs/local.json
-python -m multilingua.cli doctor
+pip install -e '.[ui]'
+python -m multilingua.cli ui
 ```
-The synthetic integration tests create a solid-color video and test tones in temporary directories.
-They do NOT validate translation, TTS or lips. Nothing silently substitutes a fake model in normal use.
 
-## Model environments
-Use separate Conda environments to avoid upstream dependency conflicts. Paths below are examples;
-use `which python` inside each environment and paste that absolute path into local.json.
-Do not assume your Conda installation is under miniconda3. Source code requires Python >=3.10.
+Open **http://127.0.0.1:7860**. The UI opens before models are configured and shows actionable setup guidance. Neural inference requires separate environments, model downloads/access and the configured GPU pipeline. Follow [setup](docs/SETUP.md), copy `configs/local.example.json` to `configs/local.json`, then run:
 
-### ASR and translation
 ```bash
-conda create -n mlspeech python=3.10 -y
-conda activate mlspeech
-pip install faster-whisper transformers sentencepiece sacremoses torch
-pip install indictranstoolkit
+python -m multilingua.cli --config configs/local.json doctor
+python -m multilingua.cli --config configs/local.json ui
 ```
-Follow https://github.com/AI4Bharat/IndicTrans2 for the model's supported dependency versions and gated
-access if requested. The adapter uses IndicProcessor with the official Hugging Face interface.
-CPU defaults reduce competition with the visual model. CUDA can be selected in command arguments.
-These are setup commands, not a verified package lock. After a successful inference, save `pip freeze`.
 
-### Hindi TTS
+The default uses a generic voice without a reference WAV. `configs/reference-voice.example.json` documents the optional IndicF5 route. Configuration supports `{project}`, `{python}`, `~` and environment-variable paths. Local configs, weights, private media and runs stay out of Git.
+
+## CLI workflow
+
 ```bash
-conda create -n mltts python=3.10 -y
-conda activate mltts
-pip install git+https://github.com/ai4bharat/IndicF5.git
-```
-Follow https://huggingface.co/ai4bharat/IndicF5, accept model access terms if required,
-and configure a short consented reference WAV plus its exact spoken transcript.
-Model downloads may require `hf auth login` (install huggingface_hub CLI if unavailable).
-The current model card recommends Indic-Speak as a successor; IndicF5 is used here for its documented
-adapter interface. Benchmark successors before replacing it; this is not a claim that IndicF5 is best.
-
-### MuseTalk
-Clone https://github.com/TMElyralab/MuseTalk into a path without spaces (e.g. ~/MuseTalk).
-Follow that repository's current installation and weight-download instructions in its own environment.
-Download ALL documented auxiliary models, not just the UNet. Check normal inference on an official
-example before connecting this project. Copy the repository path and its Python executable into config.
-Expected 1.5 UNet assets: models/musetalkV15/unet.pth and models/musetalkV15/musetalk.json.
-The adapter uses official scripts.inference, version v15, FP16, batch size 2. Reduce batch size in
-adapters/lipsync_musetalk.py if needed. Record `git rev-parse HEAD` after validating the interface.
-
-## Configure
-Edit configs/local.json:
-- commands.asr / commands.translate: absolute mlspeech Python executable.
-- commands.tts: absolute mltts Python executable.
-- commands.lipsync: controller Python executable; it launches MuseTalk's own Python.
-- tts.reference_audio: absolute path to consented reference WAV.
-- tts.reference_text: exact transcript of that reference WAV.
-- lipsync.repo and lipsync.python: official checkout and environment.
-The `{project}` placeholder resolves automatically to this extracted project's root.
-Model commands are trusted local configuration; do not expose config editing to untrusted users.
-
-## Run a real video
-```bash
-source .venv/bin/activate
-python -m multilingua.cli --config configs/local.json prepare /absolute/path/input.mp4
-```
-The command prints a job directory. Open `runs/JOB_ID/segments.json`, correct Hindi translations,
-and retain numeric start/end timestamps. Every speech segment must have a nonempty translation.
-```bash
+python -m multilingua.cli --config configs/local.json prepare /absolute/input.mp4
+# Edit Hindi translations in the printed job's segments.json.
 python -m multilingua.cli --config configs/local.json render runs/JOB_ID --audio-only
 python -m multilingua.cli --config configs/local.json render runs/JOB_ID
 ```
-Audio-only is a useful explicit comparison, not a successful lip-sync result.
-If speech is more than 25% too long for a slot, shorten the translation and rerun.
-The controller never silently cuts off translated words. Rendering recomputes segments; it is not a
-checkpoint resume mechanism. A successful rerender replaces the video atomically; a failed rerender preserves the previous completed video. Copy desired comparisons before a successful rerender.
 
-Outputs: output.mp4, subtitles.srt, reviewed_segments.json, alignment.json, job.json and logs.
-Silent source intervals become silence; music/background ambience is not preserved in this release.
-Maximum source duration: 10 minutes. Start with a 20–30-second clear single-speaker clip.
+Outputs live under `runs/JOB_ID/renders/RENDER_ID/`; top-level output aliases point through the atomic `current` link. Download `delivery.zip` for video, captions, review text, alignment, provenance and disclosure together. Watch and listen to the entire result before sharing, and label the clip **AI-dubbed**.
 
-## Optional review UI
-```bash
-source .venv/bin/activate
-pip install -e '.[ui]'
-python -m multilingua.cli --config configs/local.json ui
-```
-Open the printed localhost address. Upload, transcribe/translate, review JSON, confirm permission,
-then render. UI stays local with no public share link. It is not a production upload service.
-Run the UI on the GPU machine and use an SSH tunnel if you want to access it from your laptop.
+## Experimental capture and evaluation
 
-## Debugging
-- Missing weights/access: inspect the named adapter log and test that environment independently.
-- No face / empty MuseTalk output: choose a clear frontal video and inspect lipsync.log.
-- Speech too long: edit the translation; do not increase the speed cap arbitrarily.
-- CUDA out of memory: keep speech models on CPU, reduce lip batch size, shorten the clip.
-- Failed job: read job.json and logs; rerun prepare if transcription failed, render if synthesis failed.
-- Stale .render.lock after a killed process: confirm no render is active before deleting that lock.
-- Source has no audio / invalid timeline: fix the input; the pipeline rejects these conditions.
+A separate authenticated FastAPI service can record or upload short clips for background dubbing. It supports optional resident workers, MuseTalk or LatentSync, and experimental Tamil and Telugu presets. Use the Hindi review studio for the classroom walkthrough. See [service setup](docs/SETUP.md#experimental-local-capture-service) and [prior experimental results](docs/EVALUATION_REPORT.md).
 
-## Research and live completion
-Read docs/COMPLETION_PLAN.md. Current subprocess-per-phrase loading is intentionally an offline
-baseline. To claim live performance, implement persistent workers, causal audio segmentation,
-WebRTC capture/output and clocked bounded buffers; benchmark on target hardware.
-The included streaming.simulate utility only evaluates a queue schedule from measured processing
-costs. It does not capture a webcam or perform streaming inference.
+## Project submission
 
-## License and reproducibility
-Project-authored code is MIT (LICENSE). Third-party models, code and datasets keep their own terms.
-No model weights are bundled. Voice-cloning configurations require permission for the reference voice; generic Parler presets do not use a reference recording.
-Record OS, GPU, driver, FFmpeg version, model revisions and frozen packages with each experiment.
+| Rubric item | Document / evidence |
+|---|---|
+| Use case and functionality | This README + [design: users and scope](docs/DESIGN.md) |
+| Eight-part design document | [Design and architecture](docs/DESIGN.md) |
+| Architecture diagram | [Diagram](docs/assets/architecture.svg) + Mermaid in design document |
+| Tech stack and third-party dependencies | [Technology register](docs/TECH_STACK.md) |
+| Evaluation slices, metrics and launch thresholds | [Evaluation plan](docs/EVALUATION.md) + [scorecard](examples/review-scorecard.csv) |
+| Actual checks and unresolved gaps | [Current validation](docs/VALIDATION.md) |
+| 15-minute overview, demo and audience Q&A | [November 18 runbook](docs/DEMO.md) |
+| Repository-wide findings and fixes | [Audit and rubric mapping](docs/AUDIT.md) |
+| Future work and scope | [Roadmap](docs/COMPLETION_PLAN.md) |
 
-## Causal replay benchmark (implemented, not webcam streaming)
-```bash
-python -m multilingua.cli --config configs/local.json replay input.mp4 --chunk-seconds 6 --max-waiting 2
-```
-Chunks are released only after their source-time window closes. One worker processes chunks using
-the model adapters; bounded queue overload stops the run rather than hiding growing delay. Each
-chunk's output path and queue/compute/ready timings are saved in chunks.json. replay.json reports
-ready-delay percentiles; these are not receiver playback latency. No continuous player is implemented.
-This benchmark uses automatic translations (no interactive review) and should use consented test clips.
-Phrase splitting at fixed chunk boundaries and repeated model loading intentionally expose baseline
-limitations. All-silence chunks currently fail ASR rather than passing through; add VAD-aware handling
-before production use. The scheduler simulator remains available for fast cost-only experiments.
-
-
-## Generic Hindi voice demo
-Use `configs/generic-voice.local.json` for Indic Parler-TTS (Rohit) and MuseTalk 1.5.
-This preset uses a generic formal male voice and needs no reference WAV. Other speakers
-may need a different voice description. Models are local and require their separate environments.
+## Checks
 
 ```bash
-python -m multilingua.cli --config configs/generic-voice.local.json ui
+pip install -e '.[ui,server,dev]'
+ruff check .
+ruff format --check .
+python -m unittest discover -s tests -v
+python tests/browser_smoke.py
+python -m build
 ```
-The interface binds to `127.0.0.1:7860` by default. This is local testing, not a public deployment.
-Gradio 6 is the tested UI major version. GPU subprocesses need access to the NVIDIA driver.
-The reviewed demo assets and measurements are in `runs/hdtf-male-demo/`.
-`audio-only.mp4` retains original lips; `lipsynced.mp4` is the MuseTalk output when rendering succeeds.
-`subtitles.srt`, `alignment.json`, and `provenance.json` record text, timing, and model sources.
-Human listening and temporal lip-quality review remain necessary before treating this as a benchmark.
 
+Tests use real FFmpeg with fixed-text/tone **test doubles**. They verify software behavior, not neural quality. The browser test needs Chrome or Playwright Chromium. Heavy model environments are intentionally excluded from CI.
 
-## Evaluation and experimental webcam service
-See `docs/EVALUATION_REPORT.md` for measured results and limitations. Reproducible metric entry points:
-- `scripts/evaluate_syncnet.py`: official face tracking plus SyncNet scores, offsets and provenance.
-- `scripts/evaluate_hindi_speech.py`: Hindi recognition consistency (WER/CER), not human MOS.
-- `scripts/evaluate_text.py`: reference-based WER/CER and chrF++; missing references stay unscored.
+## Repository map
 
-`python scripts/serve_local.py` starts an authenticated **localhost-only** test service on port 7861.
-Credentials are generated into `.runtime/local-login.json` (private, gitignored); open in a browser
-that supports HTTP Basic authentication. Some embedded browsers do not support its login prompt.
-Camera and microphone activate only when the user clicks Start and grants browser permission.
-The experimental frontend sends complete six-second recordings, with a bounded queue and explicit
-failure/overload messages. It is not continuous WebRTC or validated real-time dubbing. Queued jobs
-continue after capture stops. Automatic timing may use leading/following silence, recorded in job
-metadata; it never raises the 1.25x speed cap. Overlong translations still need manual review.
+`multilingua/`: controller, UI, media and replay · `adapters/`: isolated model entry points and protocol · `configs/`: portable examples and environment records · `tests/`: regressions and browser smoke · `docs/`: submission package · `examples/`: evaluation templates.
 
-`deploy/` contains a single-operator authenticated API deployment candidate with systemd and Caddy
-configuration. No public host is provisioned. See its README for remaining release requirements.
+## Responsible use and license
+
+Use only permitted video, likeness and reference voices. The app is a local single-user research tool, bound to localhost with no public share link. Model downloads may contact upstream hosts during setup; provided inference adapters process media locally. Runs remain on disk until you delete them. Shared output must retain AI-editing disclosure; this prototype does not verify consent or watermark pixels.
+
+Project code is [MIT](LICENSE). Upstream code, weights, datasets and voices retain their own terms; see the [dependency register](docs/TECH_STACK.md). Never commit access tokens, private recordings or consent records.

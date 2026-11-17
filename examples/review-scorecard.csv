@@ -1,0 +1,1 @@
+clip_id,split,slice,reviewer,mode,asr_wer,critical_name_number_errors,adequacy_1_5,naturalness_1_5,pronunciation_1_5,lip_alignment_1_5,identity_1_5,duration_drift_ms,prepare_seconds,render_seconds,peak_vram_mib,critical_failure,notes,approved

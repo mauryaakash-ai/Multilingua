@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
-repo=/home/akash/MuseTalk
+repo="${1:?Usage: finish_musetalk_setup.sh /absolute/path/to/MuseTalk}"
+project="$(cd "$(dirname "$0")/.." && pwd)"
 py="$repo/.venv/bin/python"
 # Run after the initial PyTorch installation has completed.
 "$py" -c 'import torch, torchvision, torchaudio; assert torch.cuda.is_available(); print(torch.__version__)'
@@ -10,4 +11,4 @@ py="$repo/.venv/bin/python"
 "$py" -m pip install 'mmdet==3.1.0' 'mmpose==1.1.0'
 cd "$repo"
 "$py" -m scripts.inference --help
-"$py" -m pip freeze > '/home/akash/A Nitin/multilingua/configs/lipsync-environment.lock.txt'
+"$py" -m pip freeze > "$project/configs/lipsync-environment.lock.txt"

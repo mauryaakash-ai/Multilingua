@@ -1,0 +1,38 @@
+{
+  "timeout_seconds": 1800,
+  "max_speech_speed": 1.25,
+  "commands": {
+    "asr": [
+      "{project}/.venv-speech/bin/python",
+      "{project}/adapters/asr.py",
+      "--model",
+      "small.en",
+      "--device",
+      "cpu"
+    ],
+    "translate": [
+      "{project}/.venv-translation/bin/python",
+      "{project}/adapters/translate.py",
+      "--device",
+      "cpu"
+    ],
+    "tts": [
+      "{project}/.venv-tts/bin/python",
+      "{project}/adapters/tts_indicf5.py"
+    ],
+    "lipsync": [
+      "{python}",
+      "{project}/adapters/lipsync_musetalk.py"
+    ]
+  },
+  "tts": {
+    "model": "ai4bharat/IndicF5",
+    "reference_audio": "{project}/private/reference.wav",
+    "reference_text": "REPLACE WITH THE EXACT REFERENCE TRANSCRIPT"
+  },
+  "lipsync": {
+    "repo": "${HOME}/MuseTalk",
+    "python": "${HOME}/MuseTalk/.venv/bin/python",
+    "batch_size": 2
+  }
+}

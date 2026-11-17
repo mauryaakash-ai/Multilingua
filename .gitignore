@@ -14,16 +14,21 @@ datasets/
 .venv-tts/
 
 .venv-voice/
+configs/*.local.json
+configs/local.json
+.env
+.env.*
+!.env.example
+dist/
+build/
+.ruff_cache/
+artifacts/
+private/
+playwright-report/
+test-results/
 
 .runtime/
-
-vendor/syncnet_python/data/
-vendor/syncnet_python/detectors/s3fd/weights/
-
 .venv-latentsync/
-vendor/LatentSync/checkpoints/
-vendor/LatentSync/temp/
-
+vendor/
 presentation/.build/
 outputs/
-

@@ -1,4 +1,4 @@
-"""Generate inspectable Tamil/Telugu text, audio and lip-sync samples."""
+"""Generate inspectable Hindi text, audio and lip-sync samples."""
 
 import json
 import math
@@ -16,7 +16,7 @@ out.mkdir(parents=True, exist_ok=True)
 pool = ResidentPool(out / "worker-logs")
 rows = []
 try:
-    for code in ["ta", "te"]:
+    for code in ["hi"]:
         work = out / code
         work.mkdir(exist_ok=True)
         p = Pipeline(root / "configs/local.json", resident_pool=pool)

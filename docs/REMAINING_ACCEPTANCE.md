@@ -1,19 +1,10 @@
 # Remaining acceptance gates — 17 November 2026
 
-Local models only. No cloud speech provider is used.
+Local models only. No cloud speech provider is used. English to Hindi dubbing only.
 
 ## Continuous dubbing
 
 The current transport still uploads complete clips. `multilingua/streaming.py` is a scheduling simulator, not WebRTC. aiortc is not installed in the current service environment. Historical warm full-pipeline processing was 37.35 seconds per 5 seconds of input; lip processing alone was 31.47 seconds. Merely replacing transport cannot achieve 2–4 second delay at that throughput. No ten-minute real-time validation or dropped-frame claim is supported.
-
-## Spanish
-
-`configs/spanish.example.json` selects the new local-only NLLB and XTTS adapters. Routing rejects Spanish with Indic models and rejects Indic languages with Spanish adapters. Spanish is not added to the capture selector because model installation and real inference are outstanding. The XTTS adapter uses a bundled speaker, not a user reference recording. Create an isolated `.venv-xtts` environment and install compatible Coqui TTS before testing; the example requires local model directories and performs no model download.
-
-Official implementation references:
-- https://huggingface.co/facebook/nllb-200-distilled-600M
-- https://docs.coqui.ai/en/latest/models/xtts.html
-- https://aiortc.readthedocs.io/en/latest/api.html
 
 ## Lip quality
 
@@ -21,7 +12,7 @@ No new restoration has been enabled. The previous faster LatentSync variants wor
 
 ## Native review
 
-The user confirmed no reviewer is available. Prepared local Hindi and Tamil/Telugu review bundles under `outputs/native-review-2026-11-17` and `outputs/native-review-indic-2026-11-17`, including exact output hashes and blank review CSVs. All approvals remain pending. Tamil/Telugu clips are synthetic speech/lip tests; use the accompanying translation request/response to review text, since the source video speaks a different sentence. Spanish has no generated review clip yet.
+The user confirmed no reviewer is available. Prepared local Hindi review bundles under `outputs/native-review-2026-11-17`, including exact output hashes and blank review CSVs. All approvals remain pending.
 
 ## Local configuration repair
 
